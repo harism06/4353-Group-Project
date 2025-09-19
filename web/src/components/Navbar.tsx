@@ -1,6 +1,8 @@
 import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "@/features/auth/authContext";
 
 export default function Navbar() {
+  const { user, logout } = useAuth();
   const base = "px-3 py-2 rounded hover:bg-zinc-800";
   const active = ({ isActive }: { isActive: boolean }) =>
     isActive ? `${base} bg-zinc-800` : base;
@@ -14,12 +16,29 @@ export default function Navbar() {
         <NavLink to="/" className={active}>
           Home
         </NavLink>
-        <NavLink to="/login" className={active}>
-          Login
-        </NavLink>
-        <NavLink to="/register" className={active}>
-          Register
-        </NavLink>
+        {!user && (
+          <NavLink to="/login" className={active}>
+            Login
+          </NavLink>
+        )}
+        {!user && (
+          <NavLink to="/register" className={active}>
+            Register
+          </NavLink>
+        )}
+        {user && (
+          <NavLink to="/dashboard" className={active}>
+            Dashboard
+          </NavLink>
+        )}
+        {user && (
+          <button
+            onClick={logout}
+            className="ml-auto px-3 py-2 rounded border border-zinc-700"
+          >
+            Logout
+          </button>
+        )}
       </nav>
     </header>
   );
