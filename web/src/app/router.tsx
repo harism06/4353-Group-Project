@@ -8,6 +8,7 @@ import LoginPage from "@/features/auth/LoginPage";
 import RegisterPage from "@/features/auth/RegisterPage";
 import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import Dashboard from "@/pages/Dashboard";
+import Events from "@/pages/Events";
 
 export const router = createBrowserRouter([
   {
@@ -23,7 +24,10 @@ export const router = createBrowserRouter([
       // protected routes
       {
         element: <ProtectedRoute />,
-        children: [{ path: "dashboard", element: <Dashboard /> }],
+        children: [
+          { path: "dashboard", element: <Dashboard /> },
+          { path: "events", element: <Events /> },
+        ],
       },
 
       { path: "*", element: <NotFound /> },
