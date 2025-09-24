@@ -37,7 +37,7 @@ const RegisterPage: React.FC = () => {
     try {
       const auth = await registerUser(values);
       loginWithResponse(auth); // auto-login after register
-      navigate("/dashboard", { replace: true });
+      navigate("/profile", { replace: true });
     } catch (e: any) {
       setServerError(e?.response?.data?.message || "Could not create account");
     } finally {
