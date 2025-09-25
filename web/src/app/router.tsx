@@ -10,6 +10,8 @@ import ProtectedRoute from "@/features/auth/ProtectedRoute";
 import Dashboard from "@/pages/Dashboard";
 import Events from "@/pages/Events";
 import Profile from "@/pages/Profile";
+import MatchPage from "@/features/matching/MatchPage";
+import HistoryPage from "@/features/history/HistoryPage";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +31,8 @@ export const router = createBrowserRouter([
           { path: "dashboard", element: <Dashboard /> },
           { path: "events", element: <Events /> },
           { path: "profile", element: <Profile /> },
+          { path: "match", element: <MatchPage /> },
+          { path: "history", element: <HistoryPage /> },
         ],
       },
 
