@@ -32,6 +32,16 @@ export default function Navbar() {
           </NavLink>
         )}
         {user && (
+          <NavLink to="/match" className={active}>
+            Match
+          </NavLink>
+        )}
+        {user && (
+          <NavLink to="/history" className={active}>
+            History
+          </NavLink>
+        )}
+        {user && (
           <button
             onClick={logout}
             className="ml-auto px-3 py-2 rounded border border-zinc-700"
