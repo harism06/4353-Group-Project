@@ -248,12 +248,12 @@ export default function Events() {
                 <div>
                   <p className="font-bold text-lg">{event.name}</p>
                   <p className="text-gray-700">{event.description}</p>
-                  <p className="text-gray-700">📍 {event.location}</p>
+                  <p className="text-gray-700"> {event.location}</p>
                   <p className="text-gray-700">
-                    🛠 Skills: {event.skills.join(", ")}
+                    Skills: {event.skills.join(", ")}
                   </p>
-                  <p className="text-gray-700">⚡ Urgency: {event.urgency}</p>
-                  <p className="text-gray-700">📅 Date: {event.date}</p>
+                  <p className="text-gray-700"> Urgency: {event.urgency}</p>
+                  <p className="text-gray-700"> Date: {event.date}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
