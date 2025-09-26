@@ -168,7 +168,7 @@ export default function MatchPage() {
               <li key={ev.id} className="p-4 border rounded-lg bg-white">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-bold text-lg">{ev.name}</p>
+                    <p className="font-bold text-lg text-black">{ev.name}</p>
                     <p className="text-gray-700">{ev.description}</p>
                     <p className="text-gray-700">📍 {ev.location}</p>
                     <p className="text-gray-700">📅 {ev.date}</p>
