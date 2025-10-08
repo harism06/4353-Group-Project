@@ -1,0 +1,3 @@
+// historyController placeholder
+
+module.exports = {};

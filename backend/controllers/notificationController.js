@@ -1,0 +1,3 @@
+// notificationController placeholder
+
+module.exports = {};

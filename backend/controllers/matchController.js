@@ -1,0 +1,3 @@
+// matchController placeholder
+
+module.exports = {};

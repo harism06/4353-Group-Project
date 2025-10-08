@@ -1,0 +1,3 @@
+// authController placeholder
+
+module.exports = {};

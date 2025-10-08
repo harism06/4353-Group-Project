@@ -1,0 +1,3 @@
+// eventController placeholder
+
+module.exports = {};
