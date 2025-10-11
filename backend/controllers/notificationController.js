@@ -1,3 +1,2 @@
-// notificationController placeholder
+module.exports.createNotification = (req, res) => res.status(501).json({ message: 'Not implemented' });
 
-module.exports = {};
