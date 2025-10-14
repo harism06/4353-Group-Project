@@ -1,8 +1,7 @@
-const express = require('express');
+const express = require("express");
+const { matchVolunteers } = require("../controllers/matchController");
 const router = express.Router();
-router.get('/', (req, res) => res.send('Auth route OK'));
-// TODO: later import controller functions
-// const { register, login } = require('../controllers/authController');
-// router.post('/register', register);
-// router.post('/login', login);
+
+router.get("/:eventId", matchVolunteers);
+
 module.exports = router;
