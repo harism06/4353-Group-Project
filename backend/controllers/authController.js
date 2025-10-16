@@ -1,7 +1,6 @@
 // controllers/authController.js
+const users = require("../data/users");
 const { authSchema } = require("../validations/authSchema");
-
-let users = []; // mock in-memory user list
 
 exports.register = (req, res) => {
   const result = authSchema.safeParse(req.body);
