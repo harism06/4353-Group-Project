@@ -1,7 +1,9 @@
-
-const { v4: uuidv4 } = require('uuid');
-const history = require('../data/history');
-const { createHistoryInputSchema, getHistoryByUserIdSchema } = require('../validations/historySchema');
+const { randomUUID } = require("crypto");
+const history = require("../data/history");
+const {
+  createHistoryInputSchema,
+  getHistoryByUserIdSchema,
+} = require("../validations/historySchema");
 
 /**
  * @file Volunteer history controller functions.
@@ -24,7 +26,7 @@ exports.createHistoryRecord = (req, res) => {
     const validatedInput = createHistoryInputSchema.parse(req.body);
 
     const newHistoryRecord = {
-      id: uuidv4(),
+      id: randomUUID(),
       userId: validatedInput.userId,
       eventId: validatedInput.eventId,
       activityType: validatedInput.activityType,
@@ -40,7 +42,7 @@ exports.createHistoryRecord = (req, res) => {
       return res.status(400).json({ errors: error.errors });
     }
     // Handle other potential errors
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -61,7 +63,7 @@ exports.getHistoryByUserId = (req, res) => {
     // Validate the userId parameter against the schema
     getHistoryByUserIdSchema.parse({ userId });
 
-    const userHistory = history.filter(record => record.userId === userId);
+    const userHistory = history.filter((record) => record.userId === userId);
     return res.status(200).json(userHistory);
   } catch (error) {
     // Handle Zod validation errors
@@ -69,6 +71,6 @@ exports.getHistoryByUserId = (req, res) => {
       return res.status(400).json({ errors: error.errors });
     }
     // Handle other potential errors
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
