@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "../auth/authContext";
 
 // Sample skills data
 const AVAILABLE_SKILLS = [
@@ -18,6 +20,9 @@ const AVAILABLE_SKILLS = [
   "Fundraising",
   "Social Media",
   "Administrative",
+  "Cooking",
+  "Driving",
+  "Organization",
 ];
 
 const US_STATES = [
@@ -105,10 +110,16 @@ const ProfileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof ProfileSchema>;
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {
     register,
@@ -116,18 +127,59 @@ const ProfilePage: React.FC = () => {
     formState: { errors },
     watch,
     setValue,
+    reset,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(ProfileSchema),
     defaultValues: {
+      fullName: "",
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      zipCode: "",
       skills: [],
       availability: [],
-      address2: "",
       preferences: "",
     },
   });
 
   const selectedSkills = watch("skills") || [];
   const selectedDates = watch("availability") || [];
+
+  // Fetch existing user profile on component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/users/${user.id}`);
+        const userData = response.data;
+
+        // Populate form with existing data
+        reset({
+          fullName: userData.fullName || "",
+          address1: userData.address1 || "",
+          address2: userData.address2 || "",
+          city: userData.city || "",
+          state: userData.state || "",
+          zipCode: userData.zipCode || "",
+          skills: userData.skills || [],
+          preferences: userData.preferences || "",
+          availability: userData.availability || [],
+        });
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setErrorMessage("Failed to load profile. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user?.id, reset]);
 
   const handleSkillChange = (skill: string, checked: boolean) => {
     if (checked) {
@@ -152,22 +204,42 @@ const ProfilePage: React.FC = () => {
   };
 
   const onSubmit = async (values: ProfileFormData) => {
+    if (!user?.id) {
+      setErrorMessage("User not authenticated. Please log in.");
+      return;
+    }
+
     setSubmitting(true);
     setSuccessMessage(null);
+    setErrorMessage(null);
 
     try {
-      // Simulate API call (replace with actual API call later)
-      console.log("Profile data:", values);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await axios.put(
+        `${API_BASE_URL}/users/${user.id}`,
+        values
+      );
 
+      console.log("Profile updated:", response.data);
       setSuccessMessage("Profile updated successfully!");
 
       // Navigate to dashboard after successful update
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error);
+
+      if (error.response?.data?.message) {
+        setErrorMessage(error.response.data.message);
+      } else if (error.response?.data?.errors) {
+        // Handle Zod validation errors from backend
+        const validationErrors = error.response.data.errors
+          .map((err: any) => err.message)
+          .join(", ");
+        setErrorMessage(`Validation error: ${validationErrors}`);
+      } else {
+        setErrorMessage("Failed to update profile. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -178,6 +250,16 @@ const ProfilePage: React.FC = () => {
     date.setDate(date.getDate() + i);
     return date.toISOString().split("T")[0];
   });
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl p-6">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl p-6">
@@ -192,6 +274,15 @@ const ProfilePage: React.FC = () => {
           className="mb-4 rounded-md border border-green-300 bg-green-50 p-3 text-green-700"
         >
           {successMessage}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          aria-live="polite"
+          className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-red-700"
+        >
+          {errorMessage}
         </div>
       )}
 
@@ -412,7 +503,7 @@ const ProfilePage: React.FC = () => {
         <div className="pt-4">
           <button
             disabled={submitting}
-            className="w-full rounded-md bg-black text-white p-3 disabled:opacity-60 font-medium"
+            className="w-full rounded-md bg-black text-white p-3 disabled:opacity-60 font-medium hover:bg-gray-800 transition"
             type="submit"
           >
             {submitting ? "Saving Profile..." : "Save Profile"}
