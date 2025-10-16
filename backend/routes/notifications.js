@@ -1,8 +1,20 @@
+
 const express = require('express');
 const router = express.Router();
-router.get('/', (req, res) => res.send('Auth route OK'));
-// TODO: later import controller functions
-// const { register, login } = require('../controllers/authController');
-// router.post('/register', register);
-// router.post('/login', login);
+const { createNotification } = require('../controllers/notificationController');
+
+/**
+ * @file Notification routes.
+ * @module backend/routes/notifications
+ */
+
+/**
+ * POST /api/notifications
+ * Route to create a new notification.
+ * @function
+ * @param {Object} req - Express request object. Expected to contain notification data in `req.body`.
+ * @param {Object} res - Express response object.
+ */
+router.post('/', createNotification);
+
 module.exports = router;
