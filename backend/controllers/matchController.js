@@ -1,7 +1,8 @@
-const events = require("../data/events");
+const { events } = require("../data/events");
 const users = require("../data/users");
 
 function matchVolunteers(req, res) {
+  console.log(" Incoming match request:", req.params, req.body);
   const eventId = parseInt(req.params.eventId);
   const event = events.find((e) => e.id === eventId);
 
@@ -19,6 +20,10 @@ function matchVolunteers(req, res) {
     .filter((u) => u.matchScore > 0)
     .sort((a, b) => b.matchScore - a.matchScore);
 
+  console.log(
+    " Match response being sent:",
+    matches.length > 0 ? matches : "no matches found"
+  );
   res.status(200).json(matches);
 }
 

@@ -1,21 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Select from "react-select";
+import axios from "axios";
 
 interface Event {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   location: string;
-  skills: string[];
+  requiredSkills: string[];
   urgency: string;
   date: string;
 }
 
 const skillOptions = [
-  { value: "Cooking", label: "Cooking" },
+  { value: "Event Planning", label: "Event Planning" },
+  { value: "Marketing", label: "Marketing" },
+  { value: "Photography", label: "Photography" },
+  { value: "Food Service", label: "Food Service" },
+  { value: "Customer Service", label: "Customer Service" },
+  { value: "First Aid", label: "First Aid" },
   { value: "Teaching", label: "Teaching" },
+  { value: "Translation", label: "Translation" },
+  { value: "Technology Support", label: "Technology Support" },
+  { value: "Fundraising", label: "Fundraising" },
+  { value: "Social Media", label: "Social Media" },
+  { value: "Administrative", label: "Administrative" },
+  { value: "Cooking", label: "Cooking" },
   { value: "Driving", label: "Driving" },
-  { value: "Medical", label: "Medical" },
+  { value: "Organization", label: "Organization" },
 ];
 
 export default function Events() {
@@ -24,11 +36,28 @@ export default function Events() {
     name: "",
     description: "",
     location: "",
-    skills: [],
+    requiredSkills: [],
     urgency: "",
     date: "",
   });
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | string | null>(null);
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await axios.get("http://localhost:3001/api/events");
+      const normalized = res.data.map((e: any) => ({
+        ...e,
+        requiredSkills: Array.isArray(e.requiredSkills) ? e.requiredSkills : [],
+      }));
+      setEvents(normalized);
+    } catch (err) {
+      console.error("Error fetching events:", err);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -42,38 +71,46 @@ export default function Events() {
   const handleSkillsChange = (selected: any) => {
     setForm((prev) => ({
       ...prev,
-      skills: selected ? selected.map((s: any) => s.value) : [],
+      requiredSkills: selected ? selected.map((s: any) => s.value) : [],
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (form.skills.length === 0) {
+    if (form.requiredSkills.length === 0) {
       alert("Please select at least one required skill.");
       return;
     }
 
-    if (editId !== null) {
-      setEvents(
-        events.map((ev) => (ev.id === editId ? { ...form, id: editId } : ev))
-      );
-      setEditId(null);
-    } else {
-      setEvents([...events, { ...form, id: Date.now() }]);
-    }
+    try {
+      if (editId !== null) {
+        setEvents(
+          events.map((ev) => (ev.id === editId ? { ...form, id: editId } : ev))
+        );
+        setEditId(null);
+      } else {
+        console.log("Submitting new event:", form);
+        const res = await axios.post("http://localhost:3001/api/events", form);
+        console.log("Backend response:", res.data);
+        await fetchEvents();
+      }
 
-    setForm({
-      name: "",
-      description: "",
-      location: "",
-      skills: [],
-      urgency: "",
-      date: "",
-    });
+      setForm({
+        name: "",
+        description: "",
+        location: "",
+        requiredSkills: [],
+        urgency: "",
+        date: "",
+      });
+    } catch (err: any) {
+      console.error("Error saving event:", err.response?.data || err.message);
+      alert("Failed to save event. Check backend console for details.");
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: number | string) => {
     setEvents(events.filter((ev) => ev.id !== id));
   };
 
@@ -88,16 +125,12 @@ export default function Events() {
         Event Management (Admin)
       </h2>
 
-      {/* Event Form */}
       <form
         onSubmit={handleSubmit}
         className="space-y-5 bg-black text-white shadow-md p-6 rounded-lg"
       >
-        {/* Event Name */}
         <label className="block">
-          <span className="font-medium">
-            Event Name (100 characters, required)
-          </span>
+          <span className="font-medium">Event Name (required)</span>
           <input
             name="name"
             value={form.name}
@@ -109,7 +142,6 @@ export default function Events() {
           />
         </label>
 
-        {/* Event Description */}
         <label className="block">
           <span className="font-medium">Event Description (required)</span>
           <textarea
@@ -122,7 +154,6 @@ export default function Events() {
           />
         </label>
 
-        {/* Location */}
         <label className="block">
           <span className="font-medium">Location (required)</span>
           <textarea
@@ -135,7 +166,6 @@ export default function Events() {
           />
         </label>
 
-        {/* Required Skills */}
         <label className="block">
           <span className="font-medium">
             Required Skills (multi-select, required)
@@ -144,7 +174,7 @@ export default function Events() {
             isMulti
             options={skillOptions}
             value={skillOptions.filter((opt) =>
-              form.skills.includes(opt.value)
+              form.requiredSkills.includes(opt.value)
             )}
             onChange={handleSkillsChange}
             placeholder="Select required skills"
@@ -152,49 +182,18 @@ export default function Events() {
             styles={{
               control: (base) => ({
                 ...base,
-                backgroundColor: "#ffffff", // white
+                backgroundColor: "#ffffff",
                 color: "#000000",
-              }),
-              singleValue: (base) => ({
-                ...base,
-                color: "#000000", // black text
               }),
               menu: (base) => ({
                 ...base,
-                backgroundColor: "#ffffff", // white dropdown
+                backgroundColor: "#ffffff",
                 color: "#000000",
-              }),
-              option: (base, { isFocused, isSelected }) => ({
-                ...base,
-                backgroundColor: isSelected
-                  ? "#2563eb" // blue selected
-                  : isFocused
-                  ? "#e5e7eb" // gray-200 hover
-                  : "#ffffff",
-                color: "#000000",
-              }),
-              multiValue: (base) => ({
-                ...base,
-                backgroundColor: "#2563eb", // blue chips
-                color: "#ffffff",
-              }),
-              multiValueLabel: (base) => ({
-                ...base,
-                color: "#ffffff",
-              }),
-              multiValueRemove: (base) => ({
-                ...base,
-                color: "#ffffff",
-                ":hover": {
-                  backgroundColor: "#dc2626", // red-600
-                  color: "#ffffff",
-                },
               }),
             }}
           />
         </label>
 
-        {/* Urgency */}
         <label className="block">
           <span className="font-medium">Urgency (required)</span>
           <select
@@ -211,7 +210,6 @@ export default function Events() {
           </select>
         </label>
 
-        {/* Event Date */}
         <label className="block">
           <span className="font-medium">Event Date (required)</span>
           <input
@@ -224,7 +222,6 @@ export default function Events() {
           />
         </label>
 
-        {/* Submit Button */}
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full"
@@ -233,7 +230,6 @@ export default function Events() {
         </button>
       </form>
 
-      {/* Event List */}
       <div className="mt-10">
         <h3 className="text-xl font-semibold mb-3">Event List</h3>
         {events.length === 0 ? (
@@ -246,14 +242,18 @@ export default function Events() {
                 className="p-4 border rounded-lg shadow-sm flex justify-between items-start bg-white"
               >
                 <div>
-                  <p className="font-bold text-lg">{event.name}</p>
+                  <p className="font-bold text-black">{event.name}</p>
                   <p className="text-gray-700">{event.description}</p>
-                  <p className="text-gray-700"> {event.location}</p>
+                  <p className="text-gray-700">{event.location}</p>
                   <p className="text-gray-700">
-                    Skills: {event.skills.join(", ")}
+                    Skills:{" "}
+                    {Array.isArray(event.requiredSkills) &&
+                    event.requiredSkills.length > 0
+                      ? event.requiredSkills.join(", ")
+                      : "None"}
                   </p>
-                  <p className="text-gray-700"> Urgency: {event.urgency}</p>
-                  <p className="text-gray-700"> Date: {event.date}</p>
+                  <p className="text-gray-700">Urgency: {event.urgency}</p>
+                  <p className="text-gray-700">Date: {event.date}</p>
                 </div>
                 <div className="flex gap-2">
                   <button

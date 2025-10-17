@@ -1,43 +1,101 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/features/auth/authContext";
-import { eventsData, getUserMatches, saveUserMatches, type MatchRecord } from "@/mock/data";
+import { getEvents } from "@/api/events";
+import { addHistory } from "@/api/history";
+import { sendNotification } from "@/api/notifications";
+import axios from "axios";
+
+type MatchRecord = {
+  id: string;
+  volunteerId: string;
+  eventId: string;
+  status: "Matched" | "Confirmed" | "Completed" | "No-show";
+  createdAt: string;
+};
+
+type EventItem = {
+  id: string;
+  name: string;
+  date: string;
+  location: string;
+  urgency: string;
+};
 
 export default function HistoryPage() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<string>("all");
-  const matches = useMemo<MatchRecord[]>(() => {
-    if (!user) return [];
-    return getUserMatches(user.id);
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    axios
+      .get(`http://localhost:3001/api/history?volunteerId=${user.id}`)
+      .then((res) => setMatches(res.data))
+      .catch((err) => console.error("Error fetching history:", err));
   }, [user]);
 
-  const rows = matches
-    .filter((m) => (filter === "all" ? true : m.status === filter))
-    .map((m) => ({
-      match: m,
-      event: eventsData.find((e) => e.id === m.eventId),
-    }));
+  useEffect(() => {
+    getEvents()
+      .then((data) => setEvents(data))
+      .catch((err) => console.error("Error fetching events:", err));
+  }, []);
 
-  const onUpdateStatus = (id: string, status: MatchRecord["status"]) => {
+  const rows = useMemo(
+    () =>
+      matches
+        .filter((m) => (filter === "all" ? true : m.status === filter))
+        .map((m) => ({
+          match: m,
+          event: events.find((e) => e.id === m.eventId),
+        })),
+    [matches, events, filter]
+  );
+
+  const onUpdateStatus = async (id: string, status: MatchRecord["status"]) => {
     if (!user) return;
-    if (status === "No-show") {
-      const next = matches.filter((m) => m.id !== id);
-      saveUserMatches(user.id, next);
-      window.location.reload();
-      return;
+
+    try {
+      const match = matches.find((m) => m.id === id);
+      if (!match) return;
+
+      await axios.put(`http://localhost:3001/api/history/${id}`, { status });
+
+      if (!match.id) {
+        await addHistory({
+          volunteerId: user.id,
+          eventId: match.eventId,
+          status,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      await sendNotification({
+        volunteerId: user.id,
+        message: `Your event status has been updated to ${status}.`,
+      });
+
+      setMatches((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, status } : m))
+      );
+    } catch (err) {
+      console.error("Error updating history status:", err);
     }
-    const next = matches.map((m) => (m.id === id ? { ...m, status } : m));
-    saveUserMatches(user.id, next);
-    window.location.reload();
   };
 
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="text-2xl font-bold mb-2">My History</h1>
-      <p className="text-sm mb-4">Your matched events and participation status.</p>
+      <p className="text-sm mb-4">
+        Your matched events and participation status.
+      </p>
 
       <div className="mb-4 flex items-center gap-2">
-        <label className="text-sm">Filter</label>
+        <label htmlFor="filterSelect" className="text-sm">
+          Filter
+        </label>
         <select
+          id="filterSelect"
           className="rounded-md border p-2 bg-white text-black"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -102,5 +160,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
-

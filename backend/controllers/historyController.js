@@ -21,6 +21,8 @@ const {
  * @param {Object} res - Express response object.
  */
 exports.createHistoryRecord = (req, res) => {
+  console.log("Received history body:", req.body);
+
   try {
     // Validate the incoming request body
     const validatedInput = createHistoryInputSchema.parse(req.body);
@@ -58,6 +60,8 @@ exports.createHistoryRecord = (req, res) => {
  */
 exports.getHistoryByUserId = (req, res) => {
   try {
+    console.log(" Received history body:", req.body);
+
     const { userId } = req.params;
 
     // Validate the userId parameter against the schema
