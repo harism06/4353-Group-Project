@@ -2,6 +2,7 @@ const request = require("supertest");
 const app = require("../server");
 const notifications = require("../data/notifications");
 const { randomUUID } = require("crypto");
+const notificationSchema = require("../validations/notificationSchema");
 
 /**
  * @file Notification API tests.
@@ -12,6 +13,7 @@ describe("Notification API", () => {
   // Clear notifications array before each test to ensure test isolation
   beforeEach(() => {
     notifications.length = 0;
+    jest.restoreAllMocks();
   });
 
   describe("POST /api/notifications", () => {
@@ -115,6 +117,27 @@ describe("Notification API", () => {
       expect(response.body.errors[0].message).toContain(
         "Invalid UUID format for event ID."
       );
+      expect(notifications).toHaveLength(0);
+    });
+
+    test("should return 500 if an unexpected server error occurs", async () => {
+      // Mock the schema parse method to throw a non-Zod error
+      jest.spyOn(notificationSchema.createNotificationInputSchema, "parse").mockImplementationOnce(() => {
+        throw new Error("Unexpected server error");
+      });
+
+      const newNotification = {
+        userId: randomUUID(),
+        message: "Test notification",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toHaveProperty("message");
+      expect(response.body.message).toBe("Internal server error");
       expect(notifications).toHaveLength(0);
     });
   });

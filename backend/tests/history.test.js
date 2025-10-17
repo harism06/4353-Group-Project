@@ -2,6 +2,7 @@ const request = require("supertest");
 const app = require("../server");
 const history = require("../data/history");
 const { randomUUID } = require("crypto");
+const historySchema = require("../validations/historySchema");
 
 /**
  * @file Volunteer history API tests.
@@ -12,6 +13,7 @@ describe("History API", () => {
   // Clear history array before each test to ensure test isolation
   beforeEach(() => {
     history.length = 0;
+    jest.restoreAllMocks();
   });
 
   describe("POST /api/history", () => {
@@ -124,6 +126,29 @@ describe("History API", () => {
       expect(response.body.details).toBeUndefined();
       expect(history).toHaveLength(1);
     });
+
+    test("should return 500 if an unexpected server error occurs during creation", async () => {
+      // Mock the schema parse method to throw a non-Zod error
+      jest.spyOn(historySchema.createHistoryInputSchema, "parse").mockImplementationOnce(() => {
+        throw new Error("Unexpected database error");
+      });
+
+      const newHistoryRecord = {
+        userId: randomUUID(),
+        eventId: randomUUID(),
+        activityType: "Volunteer",
+        details: "Test details",
+      };
+
+      const response = await request(app)
+        .post("/api/history")
+        .send(newHistoryRecord);
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toHaveProperty("message");
+      expect(response.body.message).toBe("Internal server error");
+      expect(history).toHaveLength(0);
+    });
   });
 
   describe("GET /api/history/:userId", () => {
@@ -185,6 +210,21 @@ describe("History API", () => {
       expect(response.body.errors[0].message).toContain(
         "Invalid UUID format for user ID."
       );
+    });
+
+    test("should return 500 if an unexpected server error occurs during retrieval", async () => {
+      const validUserId = randomUUID();
+      
+      // Mock the schema parse method to throw a non-Zod error
+      jest.spyOn(historySchema.getHistoryByUserIdSchema, "parse").mockImplementationOnce(() => {
+        throw new Error("Unexpected server error during retrieval");
+      });
+
+      const response = await request(app).get(`/api/history/${validUserId}`);
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toHaveProperty("message");
+      expect(response.body.message).toBe("Internal server error");
     });
   });
 });
