@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/features/auth/authContext";
 import { getEvents } from "@/api/events";
-import { addHistory } from "@/api/history";
+import { addHistory, getUserHistory } from "@/api/history";
 import { sendNotification } from "@/api/notifications";
-import axios from "axios";
 
 type MatchRecord = {
   id: string;
@@ -27,11 +26,11 @@ export default function HistoryPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
 
+  // Fetch user's history records from backend
   useEffect(() => {
     if (!user) return;
-    axios
-      .get(`http://localhost:3001/api/history?volunteerId=${user.id}`)
-      .then((res) => setMatches(res.data))
+    getUserHistory(user.id)
+      .then((data) => setMatches(data))
       .catch((err) => console.error("Error fetching history:", err));
   }, [user]);
 
@@ -52,6 +51,10 @@ export default function HistoryPage() {
     [matches, events, filter]
   );
 
+  /**
+   * Update the status of a history record
+   * Creates a new history entry and sends a notification to the user
+   */
   const onUpdateStatus = async (id: string, status: MatchRecord["status"]) => {
     if (!user) return;
 
@@ -59,22 +62,22 @@ export default function HistoryPage() {
       const match = matches.find((m) => m.id === id);
       if (!match) return;
 
-      await axios.put(`http://localhost:3001/api/history/${id}`, { status });
+      // Log the status change as a new history record
+      await addHistory({
+        userId: user.id,
+        eventId: match.eventId,
+        activityType: `Status changed to ${status}`,
+        details: `Event status updated from ${match.status} to ${status}`,
+      });
 
-      if (!match.id) {
-        await addHistory({
-          volunteerId: user.id,
-          eventId: match.eventId,
-          status,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
+      // Send notification to user about the status change
       await sendNotification({
-        volunteerId: user.id,
+        userId: user.id,
+        eventId: match.eventId,
         message: `Your event status has been updated to ${status}.`,
       });
 
+      // Update local state
       setMatches((prev) =>
         prev.map((m) => (m.id === id ? { ...m, status } : m))
       );
