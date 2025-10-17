@@ -27,22 +27,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
+    // check our simple session flag instead of "accessToken"
+    const token = localStorage.getItem("token");
     if (!token) {
       setLoading(false);
       return;
     }
+    // no /me endpoint yet; just hydrate from localStorage
     fetchMe()
-      .then(setUser)
-      .catch(() => {
-        clearAuth();
-        setUser(null);
-      })
+      .then((u) => setUser(u))
       .finally(() => setLoading(false));
   }, []);
 
   const loginWithResponse = (auth: AuthResponse) => {
-    saveAuth(auth);
+    saveAuth(auth); // writes token=session, userId, user
     setUser(auth.user);
   };
 
@@ -55,6 +53,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     () => ({ user, loading, loginWithResponse, logout }),
     [user, loading]
   );
+
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 };
 
