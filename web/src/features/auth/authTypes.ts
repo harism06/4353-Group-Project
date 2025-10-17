@@ -1,12 +1,12 @@
 export type User = {
-  id: string;
-  name: string;
+  id: number | string;
   email: string;
+  name?: string;
 };
 
 export type AuthResponse = {
+  message: string;
   user: User;
-  accessToken: string;
 };
 
 export type LoginInput = {
