@@ -77,12 +77,10 @@ export default function Events() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (form.requiredSkills.length === 0) {
       alert("Please select at least one required skill.");
       return;
     }
-
     try {
       if (editId !== null) {
         setEvents(
@@ -90,12 +88,9 @@ export default function Events() {
         );
         setEditId(null);
       } else {
-        console.log("Submitting new event:", form);
-        const res = await axios.post("http://localhost:3001/api/events", form);
-        console.log("Backend response:", res.data);
+        await axios.post("http://localhost:3001/api/events", form);
         await fetchEvents();
       }
-
       setForm({
         name: "",
         description: "",
@@ -124,7 +119,6 @@ export default function Events() {
       <h2 className="text-2xl font-bold mb-6 text-center">
         Event Management (Admin)
       </h2>
-
       <form
         onSubmit={handleSubmit}
         className="space-y-5 bg-black text-white shadow-md p-6 rounded-lg"
@@ -141,7 +135,6 @@ export default function Events() {
             placeholder="Enter event name"
           />
         </label>
-
         <label className="block">
           <span className="font-medium">Event Description (required)</span>
           <textarea
@@ -153,7 +146,6 @@ export default function Events() {
             placeholder="Enter event description"
           />
         </label>
-
         <label className="block">
           <span className="font-medium">Location (required)</span>
           <textarea
@@ -165,7 +157,6 @@ export default function Events() {
             placeholder="Enter event location"
           />
         </label>
-
         <label className="block">
           <span className="font-medium">
             Required Skills (multi-select, required)
@@ -193,7 +184,6 @@ export default function Events() {
             }}
           />
         </label>
-
         <label className="block">
           <span className="font-medium">Urgency (required)</span>
           <select
@@ -209,19 +199,20 @@ export default function Events() {
             <option value="High">High</option>
           </select>
         </label>
-
         <label className="block">
-          <span className="font-medium">Event Date (required)</span>
+          <span className="font-medium">
+            Event Date (required) <span className="text-xs font-normal text-gray-300">Calendar picker</span>
+          </span>
           <input
             type="date"
             name="date"
             value={form.date}
             onChange={handleChange}
             required
-            className="w-full p-2 border rounded mt-1 bg-white text-black"
+            className="w-full p-2 border rounded mt-1 bg-white text-black cursor-pointer"
+            placeholder="Select a date"
           />
         </label>
-
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full"
@@ -229,7 +220,6 @@ export default function Events() {
           {editId !== null ? "Update Event" : "Add Event"}
         </button>
       </form>
-
       <div className="mt-10">
         <h3 className="text-xl font-semibold mb-3">Event List</h3>
         {events.length === 0 ? (

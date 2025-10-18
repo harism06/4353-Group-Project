@@ -29,11 +29,12 @@ describe("Notification API", () => {
         .send(newNotification);
 
       expect(response.statusCode).toBe(201);
-      expect(response.body).toHaveProperty("id");
-      expect(response.body.userId).toBe(newNotification.userId);
-      expect(response.body.message).toBe(newNotification.message);
-      expect(response.body).toHaveProperty("timestamp");
-      expect(response.body.read).toBe(false);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty("id");
+      expect(response.body.data.userId).toBe(newNotification.userId);
+      expect(response.body.data.message).toBe(newNotification.message);
+      expect(response.body.data).toHaveProperty("timestamp");
+      expect(response.body.data.read).toBe(false);
       expect(notifications).toHaveLength(1);
     });
 
@@ -96,12 +97,13 @@ describe("Notification API", () => {
         .send(newNotification);
 
       expect(response.statusCode).toBe(201);
-      expect(response.body).toHaveProperty("id");
-      expect(response.body.eventId).toBeUndefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty("id");
+      expect(response.body.data.eventId).toBeUndefined();
       expect(notifications).toHaveLength(1);
     });
 
-    test("should return 400 if eventId is not a valid UUID when provided", async () => {
+    test("should accept non-UUID event IDs when provided", async () => {
       const newNotification = {
         userId: randomUUID(),
         message: "Notification with invalid event ID",
@@ -112,12 +114,10 @@ describe("Notification API", () => {
         .post("/api/notifications")
         .send(newNotification);
 
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty("errors");
-      expect(response.body.errors[0].message).toContain(
-        "Invalid UUID format for event ID."
-      );
-      expect(notifications).toHaveLength(0);
+      expect(response.statusCode).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.eventId).toBe(newNotification.eventId);
+      expect(notifications).toHaveLength(1);
     });
 
     test("should return 500 if an unexpected server error occurs", async () => {

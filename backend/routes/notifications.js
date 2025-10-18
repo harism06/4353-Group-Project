@@ -1,8 +1,10 @@
-
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { createNotification } = require('../controllers/notificationController');
-
+const {
+  createNotification,
+  getNotifications,
+  markAllAsRead,
+} = require("../controllers/notificationController");
 /**
  * @file Notification routes.
  * @module backend/routes/notifications
@@ -15,6 +17,11 @@ const { createNotification } = require('../controllers/notificationController');
  * @param {Object} req - Express request object. Expected to contain notification data in `req.body`.
  * @param {Object} res - Express response object.
  */
-router.post('/', createNotification);
+
+router.post("/", createNotification);
+
+router.get("/", getNotifications);
+
+router.post("/mark-all-read", markAllAsRead);
 
 module.exports = router;

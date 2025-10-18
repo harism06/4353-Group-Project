@@ -102,7 +102,7 @@ export const useNotification = () => {
 
     try {
       await sendNotification({
-        userId: user.id,
+        userId: String(user.id),
         message,
         eventId,
       });
@@ -113,4 +113,3 @@ export const useNotification = () => {
 
   return { notify };
 };
-
