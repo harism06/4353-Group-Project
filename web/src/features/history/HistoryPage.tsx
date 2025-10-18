@@ -29,7 +29,8 @@ export default function HistoryPage() {
   // Fetch user's history records from backend
   useEffect(() => {
     if (!user) return;
-    getUserHistory(user.id)
+    const userId = String(user.id);
+    getUserHistory(userId)
       .then((data) => setMatches(data))
       .catch((err) => console.error("Error fetching history:", err));
   }, [user]);
@@ -57,6 +58,7 @@ export default function HistoryPage() {
    */
   const onUpdateStatus = async (id: string, status: MatchRecord["status"]) => {
     if (!user) return;
+    const userId = String(user.id);
 
     try {
       const match = matches.find((m) => m.id === id);
@@ -64,7 +66,7 @@ export default function HistoryPage() {
 
       // Log the status change as a new history record
       await addHistory({
-        userId: user.id,
+        userId,
         eventId: match.eventId,
         activityType: `Status changed to ${status}`,
         details: `Event status updated from ${match.status} to ${status}`,
@@ -72,7 +74,7 @@ export default function HistoryPage() {
 
       // Send notification to user about the status change
       await sendNotification({
-        userId: user.id,
+        userId,
         eventId: match.eventId,
         message: `Your event status has been updated to ${status}.`,
       });

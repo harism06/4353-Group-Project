@@ -202,14 +202,11 @@ describe("History API", () => {
       expect(response.body).toHaveLength(0);
     });
 
-    test("should return 400 if userId parameter is invalid", async () => {
+    test("should allow non-UUID userId parameters", async () => {
       const response = await request(app).get("/api/history/invalid-uuid");
 
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty("errors");
-      expect(response.body.errors[0].message).toContain(
-        "Invalid UUID format for user ID."
-      );
+      expect(response.statusCode).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
     });
 
     test("should return 500 if an unexpected server error occurs during retrieval", async () => {

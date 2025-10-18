@@ -9,19 +9,8 @@ const {
  * @module backend/controllers/notificationController
  */
 
-/**
- * Handles POST request to create a new notification.
- * Validates the request body against `createNotificationInputSchema`.
- * If valid, generates a UUID for the notification, adds a timestamp, saves it to mock data,
- * and returns the new notification with a 201 status.
- * If validation fails, returns a 400 status with validation errors.
- * @function
- * @param {Object} req - Express request object. Expected to contain notification data in `req.body`.
- * @param {Object} res - Express response object.
- */
 exports.createNotification = (req, res) => {
   try {
-    // Validate the incoming request body
     const validatedInput = createNotificationInputSchema.parse(req.body);
 
     const newNotification = {
@@ -33,14 +22,36 @@ exports.createNotification = (req, res) => {
       read: false,
     };
 
+    console.log("✅ New notification:", newNotification);
+
     notifications.push(newNotification);
-    return res.status(201).json(newNotification);
+    return res.status(201).json({ success: true, data: newNotification });
   } catch (error) {
-    // Handle Zod validation errors
     if (error.errors) {
       return res.status(400).json({ errors: error.errors });
     }
-    // Handle other potential errors
+    console.error("Failed to create notification:", error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getNotifications = (req, res) => {
+  try {
+    return res.status(200).json(notifications);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch notifications" });
+  }
+};
+
+exports.markAllAsRead = (req, res) => {
+  try {
+    notifications.forEach((n) => (n.read = true));
+    return res
+      .status(200)
+      .json({ message: "All notifications marked as read" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Failed to mark notifications as read" });
   }
 };
