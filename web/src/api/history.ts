@@ -1,23 +1,32 @@
-import axios from "axios";
+import api from "@/lib/axios";
 
-const API_URL = "http://localhost:3001/api/history";
-
-/**
- * Add a new history record to the backend
- * @param data - History record data containing userId, eventId, activityType, and optional details
- * @returns Promise with the created history record
- */
-export const addHistory = async (data: any) => {
-  const res = await axios.post(API_URL, data);
-  return res.data;
+export type MatchRecord = {
+  id: string;
+  volunteerId?: string;
+  userId?: string;
+  eventId: string;
+  status: "Matched" | "Confirmed" | "Completed" | "No-show" | string;
+  createdAt?: string;
 };
 
+export async function getUserHistory(
+  userId: string | number
+): Promise<MatchRecord[]> {
+  const uid = String(userId);
+  const { data } = await api.get(`/history/${uid}`);
+  return data;
+}
+
 /**
- * Get history records for a specific user
- * @param userId - UUID of the user
- * @returns Promise with array of history records
+ * Our A3 backend accepts POST /history with { userId, eventId, status }.
+ * We'll use "status" to log what changed.
  */
-export const getUserHistory = async (userId: string) => {
-  const res = await axios.get(`${API_URL}/${userId}`);
-  return res.data;
-};
+export async function addHistory(payload: {
+  userId: string | number;
+  eventId: string;
+  status: string;
+}) {
+  const body = { ...payload, userId: String(payload.userId) };
+  const { data } = await api.post("/history", body);
+  return data;
+}

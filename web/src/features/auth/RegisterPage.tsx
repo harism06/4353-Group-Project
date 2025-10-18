@@ -1,123 +1,116 @@
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerUser } from "./api";
+import { useForm } from "react-hook-form";
+import { useNavigate, Link } from "react-router-dom";
+import { registerUser } from "./authService";
 import { useAuth } from "./authContext";
-import type { RegisterInput } from "./authTypes";
-import { Link, useNavigate } from "react-router-dom";
 
-const RegisterSchema = z.object({
-  name: z.string().min(2, "Your name"),
-  email: z.string().email("Valid email"),
-  password: z
-    .string()
-    .min(8, "At least 8 characters")
-    .regex(/[A-Z]/, "1 uppercase letter")
-    .regex(/[a-z]/, "1 lowercase letter")
-    .regex(/[0-9]/, "1 number"),
+const Schema = z.object({
+  name: z.string().min(1, "Name is required").max(50),
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(6, "At least 6 characters"),
 });
+type FormData = z.infer<typeof Schema>;
 
-const RegisterPage: React.FC = () => {
-  const { loginWithResponse } = useAuth();
+export default function RegisterPage() {
+  const navigate = useNavigate();
+  const { setUser } = useAuth();
+  const [error, setError] = useState("");
+
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterInput>({
-    resolver: zodResolver(RegisterSchema),
-  });
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const navigate = useNavigate();
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({ resolver: zodResolver(Schema) });
 
-  const onSubmit = async (values: RegisterInput) => {
-    setServerError(null);
-    setSubmitting(true);
+  const onSubmit = async (values: FormData) => {
+    setError("");
     try {
-      const auth = await registerUser(values);
-      loginWithResponse(auth); // auto-login after register
+      const { token, user } = await registerUser({
+        email: values.email,
+        password: values.password,
+        name: values.name,
+      });
 
-      navigate("/profile", { replace: true });
-    } catch (e: any) {
-      setServerError(e?.response?.data?.message || "Could not create account");
-    } finally {
-      setSubmitting(false);
+      // persist auth
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userId", user.id);
+
+      // update context (optional but nice for Navbar, etc.)
+      setUser(user);
+
+      navigate("/dashboard");
+    } catch (e) {
+      console.error(e);
+      setError("Registration failed");
     }
   };
 
   return (
-    <div className="mx-auto max-w-md p-6">
-      <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-      <p className="text-sm mb-6">It takes less than a minute.</p>
+    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-white">
+      <h1 className="text-2xl font-semibold mb-4 text-center">Register</h1>
 
-      {serverError && (
-        <div
-          aria-live="polite"
-          className="mb-4 rounded-md border border-red-300 p-3 text-red-700"
-        >
-          {serverError}
-        </div>
-      )}
+      {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <label className="block">
-          <span className="text-sm">Full name</span>
+        <div>
+          <label className="block text-sm font-medium mb-1">Full Name</label>
           <input
-            className="mt-1 w-full rounded-md border p-2"
+            type="text"
             {...register("name")}
+            className="w-full border rounded-md p-2"
+            placeholder="Jane Doe"
           />
           {errors.name && (
-            <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>
+            <p className="text-red-600 text-xs mt-1">{errors.name.message}</p>
           )}
-        </label>
+        </div>
 
-        <label className="block">
-          <span className="text-sm">Email</span>
+        <div>
+          <label className="block text-sm font-medium mb-1">Email</label>
           <input
             type="email"
-            className="mt-1 w-full rounded-md border p-2"
             {...register("email")}
+            className="w-full border rounded-md p-2"
+            placeholder="you@example.com"
           />
           {errors.email && (
-            <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>
+            <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>
           )}
-        </label>
+        </div>
 
-        <label className="block">
-          <span className="text-sm">Password</span>
+        <div>
+          <label className="block text-sm font-medium mb-1">Password</label>
           <input
             type="password"
-            className="mt-1 w-full rounded-md border p-2"
             {...register("password")}
+            className="w-full border rounded-md p-2"
+            placeholder="•••••••"
           />
           {errors.password && (
-            <p className="text-xs text-red-600 mt-1">
+            <p className="text-red-600 text-xs mt-1">
               {errors.password.message}
             </p>
           )}
-          <p className="text-xs text-gray-500 mt-1">
-            Use 8+ chars, with upper, lower, and a number.
-          </p>
-        </label>
+        </div>
 
         <button
-          disabled={submitting}
-          className="w-full rounded-md bg-black text-white p-2 disabled:opacity-60"
+          disabled={isSubmitting}
           type="submit"
+          className="w-full bg-black text-white py-2 rounded-md hover:bg-gray-800 disabled:opacity-60"
         >
-          {submitting ? "Creating…" : "Create account"}
+          {isSubmitting ? "Creating account..." : "Create account"}
         </button>
+
+        <p className="text-sm mt-3">
+          Already have an account?{" "}
+          <Link to="/login" className="underline">
+            Login
+          </Link>
+        </p>
       </form>
-
-      <p className="text-sm mt-4">
-        Already have an account?{" "}
-        <Link to="/login" className="underline">
-          Sign in
-        </Link>
-      </p>
-    </div>
+    </section>
   );
-};
-
-export default RegisterPage;
+}

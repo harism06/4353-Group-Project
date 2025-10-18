@@ -1,34 +1,35 @@
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import axios from "axios";
+import api from "@/lib/axios";
+import { isAdmin } from "@/app/role";
 
-interface Event {
-  id: number | string;
+type Event = {
+  id: string;
   name: string;
   description: string;
   location: string;
   requiredSkills: string[];
-  urgency: string;
-  date: string;
-}
+  urgency: "Low" | "Medium" | "High";
+  date: string; // UI value yyyy-mm-dd
+};
 
 const skillOptions = [
-  { value: "Event Planning", label: "Event Planning" },
-  { value: "Marketing", label: "Marketing" },
-  { value: "Photography", label: "Photography" },
-  { value: "Food Service", label: "Food Service" },
-  { value: "Customer Service", label: "Customer Service" },
-  { value: "First Aid", label: "First Aid" },
-  { value: "Teaching", label: "Teaching" },
-  { value: "Translation", label: "Translation" },
-  { value: "Technology Support", label: "Technology Support" },
-  { value: "Fundraising", label: "Fundraising" },
-  { value: "Social Media", label: "Social Media" },
-  { value: "Administrative", label: "Administrative" },
-  { value: "Cooking", label: "Cooking" },
-  { value: "Driving", label: "Driving" },
-  { value: "Organization", label: "Organization" },
-];
+  "Event Planning",
+  "Marketing",
+  "Photography",
+  "Food Service",
+  "Customer Service",
+  "First Aid",
+  "Teaching",
+  "Translation",
+  "Technology Support",
+  "Fundraising",
+  "Social Media",
+  "Administrative",
+  "Cooking",
+  "Driving",
+  "Organization",
+].map((v) => ({ value: v, label: v }));
 
 export default function Events() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -37,88 +38,136 @@ export default function Events() {
     description: "",
     location: "",
     requiredSkills: [],
-    urgency: "",
+    urgency: "Low",
     date: "",
   });
-  const [editId, setEditId] = useState<number | string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  const fetchEvents = async () => {
+  async function fetchEvents() {
     try {
-      const res = await axios.get("http://localhost:3001/api/events");
-      const normalized = res.data.map((e: any) => ({
-        ...e,
-        requiredSkills: Array.isArray(e.requiredSkills) ? e.requiredSkills : [],
-      }));
-      setEvents(normalized);
+      const { data } = await api.get("/events");
+      setEvents(
+        (data ?? []).map((e: any) => ({
+          ...e,
+          id: String(e.id),
+          requiredSkills: Array.isArray(e.requiredSkills)
+            ? e.requiredSkills
+            : [],
+        }))
+      );
     } catch (err) {
       console.error("Error fetching events:", err);
     }
-  };
+  }
 
-  const handleChange = (
+  function handleChange(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
-  ) => {
+  ) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  }
 
-  const handleSkillsChange = (selected: any) => {
+  function handleSkillsChange(selected: any) {
     setForm((prev) => ({
       ...prev,
       requiredSkills: selected ? selected.map((s: any) => s.value) : [],
     }));
-  };
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.requiredSkills.length === 0) {
-      alert("Please select at least one required skill.");
+    if (!isAdmin()) {
+      setToast("Only admins can create events.");
       return;
     }
+
     try {
-      if (editId !== null) {
-        setEvents(
-          events.map((ev) => (ev.id === editId ? { ...form, id: editId } : ev))
+      if (editId) {
+        // If you add a backend PUT later, replace local update with API call.
+        setEvents((list) =>
+          list.map((ev) =>
+            ev.id === editId ? ({ ...form, id: editId } as Event) : ev
+          )
         );
         setEditId(null);
       } else {
-        await axios.post("http://localhost:3001/api/events", form);
+        const eventDate =
+          form.date.length <= 10
+            ? new Date(form.date + "T00:00:00").toISOString()
+            : form.date;
+
+        await api.post("/events", {
+          name: form.name,
+          description: form.description,
+          location: form.location,
+          requiredSkills: form.requiredSkills,
+          urgency: form.urgency,
+          eventDate, // backend field
+        });
         await fetchEvents();
       }
+
       setForm({
         name: "",
         description: "",
         location: "",
         requiredSkills: [],
-        urgency: "",
+        urgency: "Low",
         date: "",
       });
+      setToast("Saved!");
+      setTimeout(() => setToast(null), 1200);
     } catch (err: any) {
-      console.error("Error saving event:", err.response?.data || err.message);
-      alert("Failed to save event. Check backend console for details.");
+      console.error("Error saving event:", err?.response?.data || err.message);
+      setToast("Failed to save event.");
+      setTimeout(() => setToast(null), 1500);
     }
-  };
+  }
 
-  const handleDelete = (id: number | string) => {
-    setEvents(events.filter((ev) => ev.id !== id));
-  };
+  function handleDelete(id: string) {
+    setEvents((list) => list.filter((ev) => ev.id !== id));
+  }
 
-  const handleEdit = (event: Event) => {
+  function handleEdit(event: Event) {
     setForm({ ...event });
     setEditId(event.id);
-  };
+  }
+
+  const selectStyles = {
+    control: (base: any) => ({
+      ...base,
+      backgroundColor: "#ffffff",
+      color: "#000000",
+    }),
+    menu: (base: any) => ({
+      ...base,
+      backgroundColor: "#ffffff",
+      color: "#000000",
+    }),
+  } as const;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
+      {toast && (
+        <div
+          className="mb-4 rounded-md border border-blue-300 bg-blue-50 p-3 text-blue-700"
+          aria-live="polite"
+        >
+          {toast}
+        </div>
+      )}
+
       <h2 className="text-2xl font-bold mb-6 text-center">
         Event Management (Admin)
       </h2>
+
       <form
         onSubmit={handleSubmit}
         className="space-y-5 bg-black text-white shadow-md p-6 rounded-lg"
@@ -135,6 +184,7 @@ export default function Events() {
             placeholder="Enter event name"
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Event Description (required)</span>
           <textarea
@@ -146,6 +196,7 @@ export default function Events() {
             placeholder="Enter event description"
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Location (required)</span>
           <textarea
@@ -157,6 +208,7 @@ export default function Events() {
             placeholder="Enter event location"
           />
         </label>
+
         <label className="block">
           <span className="font-medium">
             Required Skills (multi-select, required)
@@ -168,22 +220,11 @@ export default function Events() {
               form.requiredSkills.includes(opt.value)
             )}
             onChange={handleSkillsChange}
-            placeholder="Select required skills"
             className="mt-1"
-            styles={{
-              control: (base) => ({
-                ...base,
-                backgroundColor: "#ffffff",
-                color: "#000000",
-              }),
-              menu: (base) => ({
-                ...base,
-                backgroundColor: "#ffffff",
-                color: "#000000",
-              }),
-            }}
+            styles={selectStyles}
           />
         </label>
+
         <label className="block">
           <span className="font-medium">Urgency (required)</span>
           <select
@@ -193,33 +234,32 @@ export default function Events() {
             required
             className="w-full p-2 border rounded mt-1 bg-white text-black"
           >
-            <option value="">Select urgency</option>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
         </label>
+
         <label className="block">
-          <span className="font-medium">
-            Event Date (required) <span className="text-xs font-normal text-gray-300">Calendar picker</span>
-          </span>
+          <span className="font-medium">Event Date (required)</span>
           <input
             type="date"
             name="date"
             value={form.date}
             onChange={handleChange}
             required
-            className="w-full p-2 border rounded mt-1 bg-white text-black cursor-pointer"
-            placeholder="Select a date"
+            className="w-full p-2 border rounded mt-1 bg-white text-black"
           />
         </label>
+
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full"
         >
-          {editId !== null ? "Update Event" : "Add Event"}
+          {editId ? "Update Event" : "Add Event"}
         </button>
       </form>
+
       <div className="mt-10">
         <h3 className="text-xl font-semibold mb-3">Event List</h3>
         {events.length === 0 ? (

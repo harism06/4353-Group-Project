@@ -1,64 +1,90 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { clearAuth, fetchMe, saveAuth } from "./api";
-import type { User, AuthResponse } from "./authTypes";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import api from "@/lib/axios";
 
-type AuthState = {
+type User = {
+  id: string;
+  email: string;
+  role: "admin" | "user";
+};
+
+type AuthContextValue = {
   user: User | null;
-  loading: boolean;
-  loginWithResponse: (auth: AuthResponse) => void;
+  setUser: (u: User | null) => void;
   logout: () => void;
 };
 
-const AuthCtx = createContext<AuthState | null>(null);
+const AuthCtx = createContext<AuthContextValue>({
+  user: null,
+  setUser: () => {},
+  logout: () => {},
+});
 
-export const AuthProvider: React.FC<React.PropsWithChildren> = ({
+function saveAuth(token: string, user: User) {
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("userId", user.id);
+}
+
+function clearAuth() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("userId");
+}
+
+async function fetchMe(): Promise<User | null> {
+  try {
+    const { data } = await api.get<{
+      id: string;
+      email: string;
+      role: User["role"];
+    }>("/auth/me");
+    return data as User;
+  } catch {
+    return null;
+  }
+}
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? (JSON.parse(raw) as User) : null;
-  });
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(null);
 
+  // On mount, restore user from localStorage or ask the backend
   useEffect(() => {
-    // check our simple session flag instead of "accessToken"
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+        return;
+      } catch {
+        // fall through to fetchMe
+      }
     }
-    // no /me endpoint yet; just hydrate from localStorage
-    fetchMe()
-      .then((u) => setUser(u))
-      .finally(() => setLoading(false));
-  }, []);
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  const loginWithResponse = (auth: AuthResponse) => {
-    saveAuth(auth); // writes token=session, userId, user
-    setUser(auth.user);
-  };
+    (async () => {
+      const me = await fetchMe();
+      if (me) {
+        setUser(me);
+        // ensure localStorage is consistent
+        saveAuth(token, me);
+      }
+    })();
+  }, []);
 
   const logout = () => {
     clearAuth();
     setUser(null);
   };
 
-  const value = useMemo(
-    () => ({ user, loading, loginWithResponse, logout }),
-    [user, loading]
+  return (
+    <AuthCtx.Provider value={{ user, setUser, logout }}>
+      {children}
+    </AuthCtx.Provider>
   );
-
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthCtx);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-};
+export function useAuth() {
+  return useContext(AuthCtx);
+}

@@ -1,13 +1,29 @@
-import axios from "axios";
+import api from "@/lib/axios";
 
-const API_URL = "http://localhost:3001/api/events";
-
-export const getEvents = async () => {
-  const res = await axios.get(API_URL);
-  return res.data;
+export type NewEventPayload = {
+  name: string;
+  description: string;
+  location: string;
+  requiredSkills: string[];
+  urgency: "low" | "medium" | "high";
+  eventDate: string; // ISO string
 };
 
-export const createEvent = async (data: any) => {
-  const res = await axios.post(API_URL, data);
-  return res.data;
-};
+export async function createEvent(payload: NewEventPayload) {
+  try {
+    const { data } = await api.post("/events", payload);
+    return data;
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      // some setups mount admin create here:
+      const { data } = await api.post("/admin/events", payload);
+      return data;
+    }
+    throw err;
+  }
+}
+
+export async function getEvents() {
+  const { data } = await api.get("/events");
+  return data;
+}

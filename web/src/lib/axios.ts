@@ -1,8 +1,9 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3001",
-});
+const base = (
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001"
+).replace(/\/+$/, "");
+const api = axios.create({ baseURL: `${base}/api` });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -13,4 +14,5 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+console.log("[axios] baseURL:", api.defaults.baseURL);
 export default api;

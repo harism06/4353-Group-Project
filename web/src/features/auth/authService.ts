@@ -1,23 +1,29 @@
 import api from "@/lib/axios";
 
-export type User = { id: number | string; email: string; name?: string };
+export type User = {
+  id: string;
+  email: string;
+  role: "admin" | "user";
+};
 
 export type LoginPayload = { email: string; password: string };
 export type RegisterPayload = {
-  name?: string;
   email: string;
   password: string;
+  name?: string;
 };
 
-// Backend returns: { message: string; user: User }
-export type AuthOk = { message: string; user: User };
+export type AuthOk = {
+  token: string;
+  user: User;
+};
 
 export async function login(payload: LoginPayload): Promise<AuthOk> {
-  const { data } = await api.post<AuthOk>("/api/auth/login", payload);
+  const { data } = await api.post<AuthOk>("/auth/login", payload);
   return data;
 }
 
-export async function register(payload: RegisterPayload): Promise<AuthOk> {
-  const { data } = await api.post<AuthOk>("/api/auth/register", payload);
+export async function registerUser(payload: RegisterPayload): Promise<AuthOk> {
+  const { data } = await api.post<AuthOk>("/auth/register", payload);
   return data;
 }

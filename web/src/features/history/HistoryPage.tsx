@@ -1,23 +1,21 @@
+// web/src/features/history/HistoryPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/features/auth/authContext";
-import { getEvents } from "@/api/events";
-import { addHistory, getUserHistory } from "@/api/history";
-import { sendNotification } from "@/api/notifications";
+import api from "@/lib/axios";
 
 type MatchRecord = {
   id: string;
   volunteerId: string;
   eventId: string;
-  status: "Matched" | "Confirmed" | "Completed" | "No-show";
-  createdAt: string;
+  status: "Matched" | "Confirmed" | "Completed" | "No-show" | "assigned";
+  createdAt?: string;
 };
 
 type EventItem = {
   id: string;
   name: string;
-  date: string;
-  location: string;
-  urgency: string;
+  date?: string;
+  location?: string;
 };
 
 export default function HistoryPage() {
@@ -25,20 +23,66 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState<string>("all");
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // Fetch user's history records from backend
+  // Load my history with resilient fallbacks
   useEffect(() => {
-    if (!user) return;
-    const userId = String(user.id);
-    getUserHistory(userId)
-      .then((data) => setMatches(data))
-      .catch((err) => console.error("Error fetching history:", err));
-  }, [user]);
+    if (!user?.id) return;
 
+    (async () => {
+      try {
+        const { data } = await api.get(`/users/${user.id}/history`);
+        setMatches(
+          (data ?? []).map((m: any) => ({
+            ...m,
+            id: String(m.id),
+            eventId: String(m.eventId),
+            volunteerId: String(m.volunteerId ?? user.id),
+          }))
+        );
+      } catch {
+        try {
+          const { data } = await api.get("/history/me");
+          setMatches(
+            (data ?? []).map((m: any) => ({
+              ...m,
+              id: String(m.id),
+              eventId: String(m.eventId),
+              volunteerId: String(m.volunteerId ?? user.id),
+            }))
+          );
+        } catch {
+          try {
+            const { data } = await api.get("/history");
+            const mine = (data ?? []).filter(
+              (m: any) => String(m.volunteerId ?? m.userId) === String(user.id)
+            );
+            setMatches(
+              mine.map((m: any) => ({
+                ...m,
+                id: String(m.id),
+                eventId: String(m.eventId),
+                volunteerId: String(m.volunteerId ?? user.id),
+              }))
+            );
+          } catch {
+            setMatches([]);
+          }
+        }
+      }
+    })();
+  }, [user?.id]);
+
+  // Load events to render names/locations
   useEffect(() => {
-    getEvents()
-      .then((data) => setEvents(data))
-      .catch((err) => console.error("Error fetching events:", err));
+    (async () => {
+      try {
+        const { data } = await api.get("/events");
+        setEvents((data ?? []).map((e: any) => ({ ...e, id: String(e.id) })));
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
 
   const rows = useMemo(
@@ -52,44 +96,35 @@ export default function HistoryPage() {
     [matches, events, filter]
   );
 
-  /**
-   * Update the status of a history record
-   * Creates a new history entry and sends a notification to the user
-   */
-  const onUpdateStatus = async (id: string, status: MatchRecord["status"]) => {
-    if (!user) return;
-    const userId = String(user.id);
-
+  async function onUpdateStatus(id: string, status: MatchRecord["status"]) {
     try {
-      const match = matches.find((m) => m.id === id);
-      if (!match) return;
-
-      // Log the status change as a new history record
-      await addHistory({
-        userId,
-        eventId: match.eventId,
-        activityType: `Status changed to ${status}`,
-        details: `Event status updated from ${match.status} to ${status}`,
-      });
-
-      // Send notification to user about the status change
-      await sendNotification({
-        userId,
-        eventId: match.eventId,
-        message: `Your event status has been updated to ${status}.`,
-      });
-
-      // Update local state
+      await api.put(`/history/${id}`, { status });
       setMatches((prev) =>
         prev.map((m) => (m.id === id ? { ...m, status } : m))
       );
-    } catch (err) {
-      console.error("Error updating history status:", err);
+      setToast("Status updated.");
+    } catch (err: any) {
+      setToast(
+        err?.response?.status === 403
+          ? "You don’t have permission to change this status."
+          : "Failed to update status."
+      );
+    } finally {
+      setTimeout(() => setToast(null), 1500);
     }
-  };
+  }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
+      {toast && (
+        <div
+          className="mb-4 rounded-md border border-blue-300 bg-blue-50 p-3 text-blue-700"
+          aria-live="polite"
+        >
+          {toast}
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold mb-2">My History</h1>
       <p className="text-sm mb-4">
         Your matched events and participation status.
@@ -110,6 +145,7 @@ export default function HistoryPage() {
           <option value="Confirmed">Confirmed</option>
           <option value="Completed">Completed</option>
           <option value="No-show">No-show</option>
+          <option value="assigned">assigned</option>
         </select>
       </div>
 
