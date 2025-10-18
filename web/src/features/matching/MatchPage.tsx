@@ -1,66 +1,72 @@
-// web/src/features/matching/MatchPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
 import api from "@/lib/axios";
-import { isAdmin } from "@/app/role";
 import { useAuth } from "@/features/auth/authContext";
+import { isAdmin } from "@/app/role";
 
 type Option = { value: string; label: string };
 
 export default function MatchPage() {
   const { user } = useAuth();
+
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<string>(
-    user?.id || ""
+    isAdmin() ? "" : String(user?.id ?? "")
   );
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [note, setNote] = useState<string>("");
+
   const [toast, setToast] = useState<string | null>(null);
   const [suggestedEvents, setSuggestedEvents] = useState<any[]>([]);
 
+  // Load events + volunteers (admin sees all volunteers; volunteer sees self)
   useEffect(() => {
     (async () => {
       try {
-        const [volRes, eventRes] = await Promise.all([
-          api.get("/users"),
-          api.get("/events"),
-        ]);
-        setVolunteers(
-          (volRes.data ?? []).map((v: any) => ({ ...v, id: String(v.id) }))
-        );
+        const { data: eventsData } = await api.get("/events");
         setEvents(
-          (eventRes.data ?? []).map((e: any) => ({ ...e, id: String(e.id) }))
+          (eventsData ?? []).map((e: any) => ({ ...e, id: String(e.id) }))
         );
+
+        if (isAdmin()) {
+          const { data: usersData } = await api.get("/users");
+          setVolunteers(
+            (usersData ?? []).map((v: any) => ({ ...v, id: String(v.id) }))
+          );
+        } else if (user) {
+          setVolunteers([
+            {
+              id: String(user.id),
+              name: user.email || "Me",
+              email: user.email,
+            },
+          ]);
+        }
       } catch (err) {
-        console.error("Error fetching data:", err);
+        console.error("Error fetching users/events:", err);
       }
     })();
-  }, []);
+  }, [user]);
 
+  // (Temporarily) disable suggestions route to avoid 404s
   useEffect(() => {
     if (!selectedVolunteerId || !selectedEventId) return;
-    (async () => {
-      try {
-        // If your backend has a suggestions endpoint, call it; otherwise set empty
-        const { data } = await api.get(`/match/${selectedEventId}`);
-        setSuggestedEvents(Array.isArray(data) ? data : []);
-      } catch {
-        setSuggestedEvents([]);
-      }
-    })();
+    setSuggestedEvents([]); // restore API call later when the route exists
   }, [selectedVolunteerId, selectedEventId]);
 
   const volunteerOptions: Option[] = useMemo(
     () =>
-      volunteers.map((v) => ({
+      (volunteers ?? []).map((v) => ({
         value: v.id,
         label: v.email || v.name || v.id,
       })),
     [volunteers]
   );
+
   const eventOptions: Option[] = useMemo(
-    () => events.map((e) => ({ value: e.id, label: e.name })),
+    () => (events ?? []).map((e) => ({ value: e.id, label: e.name })),
     [events]
   );
 
@@ -69,39 +75,62 @@ export default function MatchPage() {
     [events, selectedEventId]
   );
 
-  const onCreateMatch = async () => {
+  async function onCreateMatch() {
     if (!selectedVolunteerId || !selectedEvent) {
       setToast("Select volunteer and event first.");
       setTimeout(() => setToast(null), 1500);
       return;
     }
+
     try {
-      // Create a history entry; typically an admin action
+      // IMPORTANT: backend expects `userId`
       await api.post("/history", {
-        volunteerId: selectedVolunteerId,
+        userId: selectedVolunteerId,
         eventId: selectedEvent.id,
         status: "Matched",
         note,
       });
+
+      // Optional notification (best effort)
+      try {
+        await api.post("/notifications", {
+          userId: selectedVolunteerId,
+          message: `You’ve been matched to ${selectedEvent.name}`,
+        });
+      } catch {
+        /* ignore */
+      }
+
       setToast("Match created successfully!");
     } catch (err) {
       console.error("Error creating match:", err);
       setToast("Failed to create match.");
     } finally {
-      setTimeout(() => setToast(null), 1500);
+      setTimeout(() => setToast(null), 2000);
     }
-  };
+  }
+
+  const makeBadge = (text: string) => (
+    <span className="inline-block rounded bg-zinc-800 text-zinc-200 px-2 py-0.5 text-xs">
+      {text}
+    </span>
+  );
 
   const selectStyles = {
-    control: (base: any) => ({
-      ...base,
+    control: (b: any) => ({
+      ...b,
       backgroundColor: "#ffffff",
       color: "#000000",
     }),
-    singleValue: (base: any) => ({ ...base, color: "#000000" }),
-    menu: (base: any) => ({
-      ...base,
-      backgroundColor: "#ffffff",
+    singleValue: (b: any) => ({ ...b, color: "#000000" }),
+    menu: (b: any) => ({ ...b, backgroundColor: "#ffffff", color: "#000000" }),
+    option: (b: any, { isFocused, isSelected }: any) => ({
+      ...b,
+      backgroundColor: isSelected
+        ? "#2563eb"
+        : isFocused
+        ? "#e5e7eb"
+        : "#ffffff",
       color: "#000000",
     }),
   } as const;
@@ -130,6 +159,7 @@ export default function MatchPage() {
             className="mt-1"
             styles={selectStyles}
             options={volunteerOptions}
+            isDisabled={!isAdmin()}
             value={
               selectedVolunteerId
                 ? volunteerOptions.find(
@@ -140,6 +170,7 @@ export default function MatchPage() {
             onChange={(o) =>
               setSelectedVolunteerId(o ? (o as Option).value : "")
             }
+            placeholder="Select..."
           />
         </label>
 
@@ -156,6 +187,7 @@ export default function MatchPage() {
                 : null
             }
             onChange={(o) => setSelectedEventId(o ? (o as Option).value : "")}
+            placeholder="Select..."
           />
         </label>
       </div>
@@ -184,11 +216,12 @@ export default function MatchPage() {
 
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-2">Suggested Events</h2>
-        {suggestedEvents.length === 0 ? (
+        {suggestedEvents.length === 0 && (
           <p className="text-sm text-zinc-500">
             No strong matches found based on skills.
           </p>
-        ) : (
+        )}
+        {suggestedEvents.length > 0 && (
           <ul className="space-y-3">
             {suggestedEvents.map((ev) => (
               <li key={ev.id} className="p-4 border rounded-lg bg-white">
@@ -199,13 +232,8 @@ export default function MatchPage() {
                     <p className="text-gray-700">📍 {ev.location}</p>
                     <p className="text-gray-700">📅 {ev.date}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {(ev.requiredSkills ?? []).map((s: string) => (
-                        <span
-                          key={s}
-                          className="inline-block rounded bg-zinc-800 text-zinc-200 px-2 py-0.5 text-xs"
-                        >
-                          {s}
-                        </span>
+                      {ev.requiredSkills?.map((s: string) => (
+                        <span key={s}>{makeBadge(s)}</span>
                       ))}
                     </div>
                   </div>

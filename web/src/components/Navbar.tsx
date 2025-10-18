@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { isAdmin, isVolunteer } from "@/app/role";
-import { getMyNotifications, markAllRead } from "@/api/notifications";
+import {
+  getMyNotifications,
+  markAllRead,
+  type NotificationItem,
+} from "@/api/notifications";
 
 function useUnreadCount() {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
       setUnread(0);
       return;
@@ -16,7 +21,7 @@ function useUnreadCount() {
     let mounted = true;
     (async () => {
       try {
-        const items = await getMyNotifications();
+        const items: NotificationItem[] = await getMyNotifications();
         if (!mounted) return;
         setUnread(items.filter((n) => !n.read).length);
       } catch {
@@ -57,7 +62,9 @@ export default function Navbar() {
     try {
       await markAllRead();
       setUnread(0);
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   return (
@@ -79,21 +86,26 @@ export default function Navbar() {
                 Profile
               </NavLink>
 
-              {isVolunteer() && (
+              {/* Admins only see Match */}
+              {isAdmin() && (
                 <NavLink to="/match" className={link}>
                   Match
                 </NavLink>
               )}
+
+              {/* Everyone can see History */}
               <NavLink to="/history" className={link}>
                 History
               </NavLink>
+
+              {/* Admins see Add Event */}
               {isAdmin() && (
                 <NavLink to="/events" className={link}>
                   Add Event
                 </NavLink>
               )}
 
-              {/* Simple bell with unread dot */}
+              {/* Bell */}
               <button
                 aria-label="Notifications"
                 onClick={handleBellClick}
