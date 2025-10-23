@@ -40,7 +40,9 @@ app.use("/api", match);
 // health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-const port = process.env.PORT || 3001;
-app.listen(port, () => console.log(`Backend running on :${port}`));
+if (process.env.NODE_ENV !== "test" && !process.env.JEST_WORKER_ID) {
+  const port = process.env.PORT || 3001;
+  app.listen(port, () => console.log(`Backend running on :${port}`));
+}
 
 export default app;

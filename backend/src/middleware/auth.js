@@ -11,9 +11,14 @@ function getToken(req) {
 
 export function requireAuth(req, res, next) {
   try {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error("[auth] JWT_SECRET not configured");
+      return res.status(500).json({ error: "Server misconfigured" });
+    }
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: "Unauthorized" });
-    const claims = jwt.verify(token, process.env.JWT_SECRET);
+    const claims = jwt.verify(token, secret);
     req.user = claims; // { sub, role }
     next();
   } catch {
@@ -31,7 +36,9 @@ export function requireRole(role) {
 }
 
 export function signToken({ id, role }) {
-  return jwt.sign({ sub: id, role }, process.env.JWT_SECRET, {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET not configured");
+  return jwt.sign({ sub: id, role }, secret, {
     expiresIn: process.env.JWT_EXPIRES || "1h",
   });
 }
