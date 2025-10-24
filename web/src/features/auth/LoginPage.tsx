@@ -4,7 +4,7 @@ import { login as loginUser } from "./authService";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -13,7 +13,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const { token, user } = await loginUser({ email, password });
+      const { token, user } = await loginUser({ identifier, password });
 
       // store token & user so axios interceptor adds Authorization automatically
       localStorage.setItem("token", token);
@@ -23,14 +23,14 @@ export default function LoginPage() {
       navigate("/dashboard");
     } catch (err) {
       console.error("Login failed:", err);
-      setError("Request failed with status code 404");
+      setError("Login failed. Check your credentials and try again.");
     }
   }
 
   const hasError = Boolean(error);
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-white">
+    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-100">
       <h1 className="text-2xl font-semibold mb-4 text-center">Login</h1>
 
       {hasError && (
@@ -41,18 +41,21 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-1">
-            Email
+          <label
+            htmlFor="identifier"
+            className="block text-sm font-medium mb-1"
+          >
+            Email or Username
           </label>
           <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded-md p-2 focus:ring focus:ring-blue-200"
-            placeholder="admin@test.com"
+            id="identifier"
+            name="identifier"
+            type="text"
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            className="w-full border rounded-md p-2 bg-gray-200 focus:ring focus:ring-blue-200"
+            placeholder="admin or admin@test.com"
             required
             aria-invalid={hasError ? "true" : "false"}
             aria-describedby={hasError ? "login-error" : undefined}
@@ -70,7 +73,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-md p-2 focus:ring focus:ring-blue-200"
+            className="w-full border rounded-md p-2 bg-gray-200 focus:ring focus:ring-blue-200"
             placeholder="secret12"
             required
             aria-invalid={hasError ? "true" : "false"}

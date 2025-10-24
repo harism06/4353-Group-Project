@@ -21,7 +21,12 @@ export async function seedMem() {
       where: { email: "admin@test.com" },
     })) ||
     (await prisma.userCredentials.create({
-      data: { email: "admin@test.com", password: adminPwd, role: "admin" },
+      data: {
+        username: "admin",
+        email: "admin@test.com",
+        password: adminPwd,
+        role: "admin",
+      },
     }));
 
   const volunteer =
@@ -29,7 +34,12 @@ export async function seedMem() {
       where: { email: "vol@test.com" },
     })) ||
     (await prisma.userCredentials.create({
-      data: { email: "vol@test.com", password: volPwd, role: "volunteer" },
+      data: {
+        username: "volunteer",
+        email: "vol@test.com",
+        password: volPwd,
+        role: "volunteer",
+      },
     }));
 
   if (!profiles.some((p) => p.userId === admin.id)) {

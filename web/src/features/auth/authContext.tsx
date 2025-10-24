@@ -3,8 +3,9 @@ import api from "@/lib/axios";
 
 type User = {
   id: string;
+  username: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "volunteer";
 };
 
 type AuthContextValue = {
@@ -35,6 +36,7 @@ async function fetchMe(): Promise<User | null> {
   try {
     const { data } = await api.get<{
       id: string;
+      username: string;
       email: string;
       role: User["role"];
     }>("/auth/me");
