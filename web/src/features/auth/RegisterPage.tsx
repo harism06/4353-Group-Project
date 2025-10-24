@@ -8,6 +8,11 @@ import { useAuth } from "./authContext";
 
 const Schema = z.object({
   name: z.string().min(1, "Name is required").max(50),
+  username: z
+    .string()
+    .min(3, "At least 3 characters")
+    .max(30, "Maximum 30 characters")
+    .regex(/^[a-z0-9_]+$/i, "Letters, numbers and underscores only"),
   email: z.string().email("Enter a valid email"),
   password: z.string().min(6, "At least 6 characters"),
 });
@@ -28,6 +33,7 @@ export default function RegisterPage() {
     setError("");
     try {
       const { token, user } = await registerUser({
+        username: values.username,
         email: values.email,
         password: values.password,
         name: values.name,
@@ -49,7 +55,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-white">
+    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-100">
       <h1 className="text-2xl font-semibold mb-4 text-center">Register</h1>
 
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
@@ -60,7 +66,8 @@ export default function RegisterPage() {
           <input
             type="text"
             {...register("name")}
-            className="w-full border rounded-md p-2"
+            className="w-full border rounded-md p-2 bg-gray-200"
+            autoComplete="name"
             placeholder="Jane Doe"
           />
           {errors.name && (
@@ -69,11 +76,28 @@ export default function RegisterPage() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium mb-1">Username</label>
+          <input
+            type="text"
+            {...register("username")}
+            className="w-full border rounded-md p-2 bg-gray-200"
+            autoComplete="username"
+            placeholder="janedoe"
+          />
+          {errors.username && (
+            <p className="text-red-600 text-xs mt-1">
+              {errors.username.message}
+            </p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium mb-1">Email</label>
           <input
             type="email"
             {...register("email")}
-            className="w-full border rounded-md p-2"
+            className="w-full border rounded-md p-2 bg-gray-200"
+            autoComplete="email"
             placeholder="you@example.com"
           />
           {errors.email && (
@@ -86,7 +110,8 @@ export default function RegisterPage() {
           <input
             type="password"
             {...register("password")}
-            className="w-full border rounded-md p-2"
+            className="w-full border rounded-md p-2 bg-gray-200"
+            autoComplete="new-password"
             placeholder="•••••••"
           />
           {errors.password && (

@@ -5,6 +5,7 @@ import prisma from "../db/prisma.js";
 const r = Router();
 const sanitize = (u) => ({
   id: u.id,
+  username: u.username,
   email: u.email,
   role: u.role,
   createdAt: u.createdAt,

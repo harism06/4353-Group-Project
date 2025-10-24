@@ -2,12 +2,14 @@ import api from "@/lib/axios";
 
 export type User = {
   id: string;
+  username: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "volunteer";
 };
 
-export type LoginPayload = { email: string; password: string };
+export type LoginPayload = { identifier: string; password: string };
 export type RegisterPayload = {
+  username: string;
   email: string;
   password: string;
   name?: string;
