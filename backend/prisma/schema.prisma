@@ -15,3 +15,21 @@ model UserCredentials {
   role      String   @default("volunteer")
   createdAt DateTime @default(now())
 }
+
+model EventDetails {
+  id          String       @id @default(uuid())
+  name        String
+  description String
+  location    String
+  skills      Json
+  urgency     UrgencyLevel @default(low)
+  eventDate   DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum UrgencyLevel {
+  low
+  medium
+  high
+}
