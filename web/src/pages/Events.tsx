@@ -1,16 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
-import api from "@/lib/axios";
 import { isAdmin } from "@/app/role";
+import {
+  createEvent,
+  listEvents,
+  removeEvent,
+  updateEvent,
+  type EventRecord,
+} from "@/api/events";
 
-type Event = {
-  id: string;
+type FormState = {
   name: string;
   description: string;
   location: string;
   requiredSkills: string[];
-  urgency: "Low" | "Medium" | "High";
-  date: string; // UI value yyyy-mm-dd
+  urgency: "low" | "medium" | "high";
+  date: string;
 };
 
 const skillOptions = [
@@ -31,37 +36,53 @@ const skillOptions = [
   "Organization",
 ].map((v) => ({ value: v, label: v }));
 
+const defaultForm: FormState = {
+  name: "",
+  description: "",
+  location: "",
+  requiredSkills: [],
+  urgency: "low",
+  date: "",
+};
+
 export default function Events() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [form, setForm] = useState<Omit<Event, "id">>({
-    name: "",
-    description: "",
-    location: "",
-    requiredSkills: [],
-    urgency: "Low",
-    date: "",
-  });
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [form, setForm] = useState<FormState>(defaultForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
+  const sortedEvents = useMemo(
+    () =>
+      [...events].sort(
+        (a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()
+      ),
+    [events]
+  );
+
   async function fetchEvents() {
     try {
-      const { data } = await api.get("/events");
+      setLoading(true);
+      setError(null);
+      const data = await listEvents();
       setEvents(
-        (data ?? []).map((e: any) => ({
-          ...e,
-          id: String(e.id),
-          requiredSkills: Array.isArray(e.requiredSkills)
-            ? e.requiredSkills
+        data.map((evt) => ({
+          ...evt,
+          requiredSkills: Array.isArray(evt.requiredSkills)
+            ? evt.requiredSkills
             : [],
         }))
       );
     } catch (err) {
       console.error("Error fetching events:", err);
+      setError("Failed to load events. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -81,48 +102,36 @@ export default function Events() {
     }));
   }
 
+  function isoFromDateInput(value: string) {
+    if (!value) return "";
+    return new Date(value + "T00:00:00Z").toISOString();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isAdmin()) {
-      setToast("Only admins can create events.");
+      setToast("Only admins can create or edit events.");
       return;
     }
-
     try {
+      const payload = {
+        name: form.name,
+        description: form.description,
+        location: form.location,
+        requiredSkills: form.requiredSkills,
+        urgency: form.urgency,
+        eventDate: isoFromDateInput(form.date),
+      };
+
       if (editId) {
-        // If you add a backend PUT later, replace local update with API call.
-        setEvents((list) =>
-          list.map((ev) =>
-            ev.id === editId ? ({ ...form, id: editId } as Event) : ev
-          )
-        );
-        setEditId(null);
+        await updateEvent(editId, payload);
       } else {
-        const eventDate =
-          form.date.length <= 10
-            ? new Date(form.date + "T00:00:00").toISOString()
-            : form.date;
-
-        await api.post("/events", {
-          name: form.name,
-          description: form.description,
-          location: form.location,
-          requiredSkills: form.requiredSkills,
-          urgency: form.urgency,
-          eventDate, // backend field
-        });
-        await fetchEvents();
+        await createEvent(payload);
       }
-
-      setForm({
-        name: "",
-        description: "",
-        location: "",
-        requiredSkills: [],
-        urgency: "Low",
-        date: "",
-      });
-      setToast("Saved!");
+      await fetchEvents();
+      setForm(defaultForm);
+      setEditId(null);
+      setToast("Event saved!");
       setTimeout(() => setToast(null), 1200);
     } catch (err: any) {
       console.error("Error saving event:", err?.response?.data || err.message);
@@ -131,12 +140,32 @@ export default function Events() {
     }
   }
 
-  function handleDelete(id: string) {
-    setEvents((list) => list.filter((ev) => ev.id !== id));
+  async function handleDelete(id: string) {
+    if (!isAdmin()) {
+      setToast("Only admins can delete events.");
+      return;
+    }
+    try {
+      await removeEvent(id);
+      await fetchEvents();
+      setToast("Event removed");
+      setTimeout(() => setToast(null), 1000);
+    } catch (err) {
+      console.error("Failed to delete event", err);
+      setToast("Failed to delete event.");
+      setTimeout(() => setToast(null), 1500);
+    }
   }
 
-  function handleEdit(event: Event) {
-    setForm({ ...event });
+  function handleEdit(event: EventRecord) {
+    setForm({
+      name: event.name,
+      description: event.description,
+      location: event.location,
+      requiredSkills: event.requiredSkills ?? [],
+      urgency: event.urgency,
+      date: event.eventDate.slice(0, 10),
+    });
     setEditId(event.id);
   }
 
@@ -161,6 +190,12 @@ export default function Events() {
           aria-live="polite"
         >
           {toast}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-red-700">
+          {error}
         </div>
       )}
 
@@ -199,13 +234,13 @@ export default function Events() {
 
         <label className="block">
           <span className="font-medium">Location (required)</span>
-          <textarea
+          <input
             name="location"
             value={form.location}
             onChange={handleChange}
             required
             className="w-full p-2 border rounded mt-1 bg-white text-black"
-            placeholder="Enter event location"
+            placeholder="City / Venue"
           />
         </label>
 
@@ -234,9 +269,9 @@ export default function Events() {
             required
             className="w-full p-2 border rounded mt-1 bg-white text-black"
           >
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
         </label>
 
@@ -260,50 +295,62 @@ export default function Events() {
         </button>
       </form>
 
-      <div className="mt-10">
-        <h3 className="text-xl font-semibold mb-3">Event List</h3>
-        {events.length === 0 ? (
-          <p className="text-gray-500">No events created yet.</p>
+      <section className="mt-8">
+        {loading ? (
+          <p className="text-center text-gray-500">Loading events...</p>
+        ) : sortedEvents.length === 0 ? (
+          <p className="text-center text-gray-500">No events created yet.</p>
         ) : (
-          <ul className="space-y-3">
-            {events.map((event) => (
+          <ul className="space-y-4">
+            {sortedEvents.map((event) => (
               <li
                 key={event.id}
-                className="p-4 border rounded-lg shadow-sm flex justify-between items-start bg-white"
+                className="border rounded-lg p-4 bg-white shadow flex flex-col gap-2"
               >
-                <div>
-                  <p className="font-bold text-black">{event.name}</p>
-                  <p className="text-gray-700">{event.description}</p>
-                  <p className="text-gray-700">{event.location}</p>
-                  <p className="text-gray-700">
-                    Skills:{" "}
-                    {Array.isArray(event.requiredSkills) &&
-                    event.requiredSkills.length > 0
-                      ? event.requiredSkills.join(", ")
-                      : "None"}
-                  </p>
-                  <p className="text-gray-700">Urgency: {event.urgency}</p>
-                  <p className="text-gray-700">Date: {event.date}</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold">{event.name}</h3>
+                    <p className="text-sm text-gray-600">{event.description}</p>
+                  </div>
+                  <span className="text-sm font-medium text-gray-500">
+                    {event.eventDate.slice(0, 10)}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(event)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(event.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-                  >
-                    Delete
-                  </button>
-                </div>
+
+                <p className="text-sm">
+                  <strong>Location:</strong> {event.location}
+                </p>
+                <p className="text-sm">
+                  <strong>Required Skills:</strong>{" "}
+                  {event.requiredSkills.length
+                    ? event.requiredSkills.join(", ")
+                    : "None specified"}
+                </p>
+                <p className="text-sm capitalize">
+                  <strong>Urgency:</strong> {event.urgency}
+                </p>
+
+                {isAdmin() && (
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={() => handleEdit(event)}
+                      className="flex-1 bg-black text-white py-2 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="flex-1 border border-red-500 text-red-500 py-2 rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

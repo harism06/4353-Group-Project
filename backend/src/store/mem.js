@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
-import { randomUUID } from "crypto";
 import prisma from "../db/prisma.js";
 
 export const profiles = []; // {userId, fullName, skills[], availability, ...}
-export const events = []; // {id,name,description,requiredSkills[],urgency,eventDate,location}
+export const events = []; // kept for legacy references
 export const history = []; // {id,userId,eventId,status,note,assignedAt}
 export const notifications = []; // {id,userId,message,createdAt,read}
 
@@ -64,29 +63,50 @@ export async function seedMem() {
     });
   }
 
-  if (!events.length) {
+  const seededEvents = await prisma.eventDetails.count();
+  if (!seededEvents) {
     const tomorrow = new Date(Date.now() + 86400000).toISOString();
     const twoDays = new Date(Date.now() + 2 * 86400000).toISOString();
-
-    events.push(
-      {
-        id: randomUUID(),
-        name: "Community Kitchen",
-        description: "Prepare & serve",
-        requiredSkills: ["Cooking"],
-        urgency: "high",
-        eventDate: tomorrow,
-        location: "Downtown",
-      },
-      {
-        id: randomUUID(),
-        name: "After-School Tutoring",
-        description: "Help students",
-        requiredSkills: ["Teaching"],
-        urgency: "medium",
-        eventDate: twoDays,
-        location: "West Library",
-      }
-    );
+    try {
+      await prisma.eventDetails.createMany({
+        data: [
+          {
+            name: "Community Kitchen",
+            description: "Prepare and serve meals to neighbors in need.",
+            location: "Downtown",
+            skills: ["Cooking", "Organization"],
+            urgency: "high",
+            eventDate: tomorrow,
+          },
+          {
+            name: "After-School Tutoring",
+            description: "Help students with homework and enrichment.",
+            location: "West Library",
+            skills: ["Teaching", "Patience"],
+            urgency: "medium",
+            eventDate: twoDays,
+          },
+        ],
+      });
+    } catch {
+      // ignore duplicate inserts on re-seed
+    }
   }
+
+  const persisted = await prisma.eventDetails.findMany({
+    orderBy: { eventDate: "asc" },
+  });
+  events.splice(
+    0,
+    events.length,
+    ...persisted.map((ev) => ({
+      id: ev.id,
+      name: ev.name,
+      description: ev.description,
+      location: ev.location,
+      requiredSkills: Array.isArray(ev.skills) ? ev.skills : [],
+      urgency: ev.urgency,
+      eventDate: ev.eventDate.toISOString(),
+    }))
+  );
 }

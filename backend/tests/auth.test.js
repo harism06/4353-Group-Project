@@ -7,12 +7,12 @@ import prisma from "../src/db/prisma.js";
 const BASE = "/api/auth";
 const VALID_PASSWORD = "Secret123!";
 
-const makeId = (label) =>
-  `auth_test_${label}_${Date.now()}_${Math.random()
-    .toString(16)
-    .slice(2)}`.toLowerCase();
-const makeEmail = (label) => `${makeId(label)}@example.com`;
-const makeUsername = (label) => makeId(`${label}_user`).replace(/[^a-z0-9_]/gi, "");
+const makeSlug = (label) =>
+  `${label}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+    .replace(/[^a-z0-9_]/gi, "")
+    .toLowerCase();
+const makeUsername = (label) => makeSlug(`auth_${label}`).slice(0, 28);
+const makeEmail = (label) => `${makeSlug(label)}@example.com`;
 
 const getAuthCookie = (res) =>
   res.headers["set-cookie"]?.find((cookie) => cookie.startsWith("token="));
