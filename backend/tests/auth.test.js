@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { jest } from "@jest/globals";
 import app from "../src/server.js";
 import prisma from "../src/db/prisma.js";
+import { signToken } from "../src/middleware/auth.js";
 
 const BASE = "/api/auth";
 const VALID_PASSWORD = "Secret123!";
@@ -18,6 +19,7 @@ const getAuthCookie = (res) =>
   res.headers["set-cookie"]?.find((cookie) => cookie.startsWith("token="));
 
 afterAll(async () => {
+  // clean up only our test records
   await prisma.userCredentials.deleteMany({
     where: {
       OR: [
@@ -169,10 +171,12 @@ describe("POST /auth/login", () => {
   });
 
   it("rejects unknown users", async () => {
-    const res = await request(app).post(`${BASE}/login`).send({
-      identifier: makeEmail("unknown"),
-      password: VALID_PASSWORD,
-    });
+    const res = await request(app)
+      .post(`${BASE}/login`)
+      .send({
+        identifier: makeEmail("unknown"),
+        password: VALID_PASSWORD,
+      });
     expect(res.statusCode).toBe(401);
     expect(res.body).toHaveProperty("error", "Invalid credentials");
   });
@@ -228,13 +232,21 @@ describe("GET /auth/me", () => {
     });
 
     const cookie = getAuthCookie(register);
-    const res = await request(app)
-      .get(`${BASE}/me`)
-      .set("Cookie", cookie);
+    const res = await request(app).get(`${BASE}/me`).set("Cookie", cookie);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toMatchObject({ role: "volunteer", email, username });
     expect(typeof res.body.id).toBe("string");
+  });
+
+  // Extra branch coverage: authenticated but user not found (404)
+  it("returns 404 if token is valid but user record is missing", async () => {
+    const token = signToken({ id: "non-existent-id", role: "volunteer" });
+    const res = await request(app)
+      .get(`${BASE}/me`)
+      .set("Cookie", `token=${token}`);
+    // Your handler returns 404 for not found
+    expect(res.statusCode).toBe(404);
   });
 });
 
@@ -254,9 +266,7 @@ describe("POST /auth/logout", () => {
     });
     const cookie = getAuthCookie(register);
 
-    const res = await request(app)
-      .post(`${BASE}/logout`)
-      .set("Cookie", cookie);
+    const res = await request(app).post(`${BASE}/logout`).set("Cookie", cookie);
 
     expect(res.statusCode).toBe(204);
     const cleared = res.headers["set-cookie"]?.find((c) =>
@@ -264,5 +274,52 @@ describe("POST /auth/logout", () => {
     );
     expect(cleared).toBeDefined();
     expect(cleared).toContain("Expires=");
+  });
+});
+
+/* ---------- EXTRA BRANCH COVERAGE FOR auth.js ---------- */
+
+describe("Prisma unique constraint branches", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("handles Prisma P2002 for email on register", async () => {
+    const email = makeEmail("p2002_email");
+    const username = makeUsername("p2002_email");
+
+    // Ensure findFirst -> null, then create throws P2002 for email
+    jest.spyOn(prisma.userCredentials, "findFirst").mockResolvedValueOnce(null);
+    jest
+      .spyOn(prisma.userCredentials, "create")
+      .mockRejectedValueOnce({ code: "P2002", meta: { target: ["email"] } });
+
+    const res = await request(app).post(`${BASE}/register`).send({
+      username,
+      email,
+      password: VALID_PASSWORD,
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error).toBe("Email already used");
+  });
+
+  it("handles Prisma P2002 for username on register", async () => {
+    const email = makeEmail("p2002_username");
+    const username = makeUsername("p2002_username");
+
+    jest.spyOn(prisma.userCredentials, "findFirst").mockResolvedValueOnce(null);
+    jest
+      .spyOn(prisma.userCredentials, "create")
+      .mockRejectedValueOnce({ code: "P2002", meta: { target: ["username"] } });
+
+    const res = await request(app).post(`${BASE}/register`).send({
+      username,
+      email,
+      password: VALID_PASSWORD,
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error).toBe("Username already used");
   });
 });
