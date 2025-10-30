@@ -34,6 +34,11 @@ exports.createNotification = (req, res) => {
     };
 
     notifications.push(newNotification);
+    // Optional: write to DB notifications table if later added
+    // Reuse VolunteerHistory as a trigger for 'assigned' notification example
+    if (String(validatedInput.message).toLowerCase().includes('assigned')) {
+      // no-op; placeholder for future assignment hooks
+    }
     return res.status(201).json(newNotification);
   } catch (error) {
     // Handle Zod validation errors

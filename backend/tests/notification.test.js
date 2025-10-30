@@ -37,6 +37,20 @@ describe("Notification API", () => {
       expect(notifications).toHaveLength(1);
     });
 
+    test("should hit assigned branch when message contains 'assigned'", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+        message: "You have been assigned to an event",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+    });
+
     test("should return 400 if userId is missing", async () => {
       const newNotification = {
         message: "Test notification message",

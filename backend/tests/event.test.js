@@ -171,5 +171,31 @@ describe("Event API Tests", () => {
       expect(res.body).toHaveProperty("error");
       expect(events).toHaveLength(0);
     });
+
+    test("should return 400 with message on unexpected error", async () => {
+      // Force a non-Zod error to cover err.message branch
+      jest.spyOn(eventSchema, "parse").mockImplementationOnce(() => {
+        throw new Error("Unexpected failure");
+      });
+
+      const newEvent = {
+        name: "Park Cleaning",
+        description: "Clean up the park",
+        requiredSkills: ["Organization"],
+        urgency: "Medium",
+        location: "Houston",
+        date: "2024-12-31",
+      };
+
+      const res = await request(app)
+        .post("/api/events")
+        .send(newEvent)
+        .set("Accept", "application/json");
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty("error");
+      expect(typeof res.body.error).toBe("string");
+      expect(events).toHaveLength(0);
+    });
   });
 });

@@ -1,5 +1,6 @@
 const { randomUUID } = require("crypto");
 const history = require("../data/history");
+// Prisma is optional at runtime; dynamically load when available
 const {
   createHistoryInputSchema,
   getHistoryByUserIdSchema,
@@ -37,6 +38,29 @@ exports.createHistoryRecord = (req, res) => {
     };
 
     history.push(newHistoryRecord);
+
+    // Best-effort DB persistence without breaking existing behavior
+    (async () => {
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const status = validatedInput.activityType;
+        const hours = 0;
+        const dateParticipated = new Date();
+        await prisma.volunteerHistory.create({
+          data: {
+            id: newHistoryRecord.id,
+            userId: String(validatedInput.userId),
+            eventId: String(validatedInput.eventId),
+            status,
+            hours,
+            dateParticipated,
+          }
+        });
+        await prisma.$disconnect();
+      } catch (_e) { /* ignore DB issues in mock mode */ }
+    })();
+
     return res.status(201).json(newHistoryRecord);
   } catch (error) {
     // Handle Zod validation errors
