@@ -12,10 +12,17 @@ import events from "./routes/events.js";
 import history from "./routes/history.js";
 import notifications from "./routes/notifications.js";
 import match from "./routes/match.js";
+import { seedMem } from "./store/mem.js";
 
 console.log("[DB]", process.env.DATABASE_URL);
 
 const app = express();
+
+if (process.env.NODE_ENV !== "test" && !process.env.JEST_WORKER_ID) {
+  seedMem().catch((err) =>
+    console.error("[seed] failed to initialize baseline data", err)
+  );
+}
 
 app.use(
   cors({
