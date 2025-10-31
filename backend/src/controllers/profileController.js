@@ -27,6 +27,25 @@ const profileSchema = z.object({
   availability: z.string().min(1, "Please select at least one date"),
 });
 
+const toWriteData = (data) => ({
+  fullName: data.fullName,
+  address: data.address,
+  city: data.city,
+  state: data.state,
+  zipcode: data.zipcode,
+  skills: data.skills,
+  preferences: data.preferences ?? [],
+  availability: data.availability,
+});
+
+const toResponse = (profile) => ({
+  ...profile,
+  skills: Array.isArray(profile.skills) ? profile.skills : [],
+  preferences: Array.isArray(profile.preferences)
+    ? profile.preferences
+    : [],
+});
+
 /**
  * GET /api/profiles/me
  * Returns the authenticated user's profile or null if not found
@@ -43,16 +62,7 @@ export async function getMyProfile(req, res) {
       return res.json(null);
     }
 
-    // Parse JSON fields for frontend
-    const response = {
-      ...profile,
-      skills: Array.isArray(profile.skills) ? profile.skills : [],
-      preferences: Array.isArray(profile.preferences)
-        ? profile.preferences
-        : [],
-    };
-
-    res.json(response);
+    res.json(toResponse(profile));
   } catch (error) {
     console.error("Get profile error:", error);
     res.status(500).json({ error: "Failed to load profile" });
@@ -85,47 +95,56 @@ export async function createOrUpdateProfile(req, res) {
       // Update existing profile
       profile = await prisma.userProfile.update({
         where: { userId },
-        data: {
-          fullName: data.fullName,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zipcode: data.zipcode,
-          skills: data.skills,
-          preferences: data.preferences,
-          availability: data.availability,
-        },
+        data: toWriteData(data),
       });
     } else {
       // Create new profile
       profile = await prisma.userProfile.create({
         data: {
           userId,
-          fullName: data.fullName,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zipcode: data.zipcode,
-          skills: data.skills,
-          preferences: data.preferences,
-          availability: data.availability,
+          ...toWriteData(data),
         },
       });
     }
 
-    // Parse JSON for response
-    const response = {
-      ...profile,
-      skills: Array.isArray(profile.skills) ? profile.skills : [],
-      preferences: Array.isArray(profile.preferences)
-        ? profile.preferences
-        : [],
-    };
-
-    res.status(existing ? 200 : 201).json(response);
+    res.status(existing ? 200 : 201).json(toResponse(profile));
   } catch (error) {
     console.error("Create/update profile error:", error);
     res.status(500).json({ error: "Failed to save profile" });
+  }
+}
+
+/**
+ * PUT /api/profiles
+ * Update authenticated user's profile only if it exists
+ */
+export async function updateProfile(req, res) {
+  try {
+    const userId = req.user.sub;
+    const validation = profileSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json(validation.error.flatten());
+    }
+
+    const existing = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const profile = await prisma.userProfile.update({
+      where: { userId },
+      data: toWriteData(validation.data),
+    });
+
+    res.json(toResponse(profile));
+  } catch (error) {
+    console.error("Update authenticated profile error:", error);
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+    res.status(500).json({ error: "Failed to update profile" });
   }
 }
 
@@ -149,16 +168,7 @@ export async function getUserProfile(req, res) {
       return res.status(404).json({ error: "Profile not found" });
     }
 
-    // Parse JSON fields
-    const response = {
-      ...profile,
-      skills: Array.isArray(profile.skills) ? profile.skills : [],
-      preferences: Array.isArray(profile.preferences)
-        ? profile.preferences
-        : [],
-    };
-
-    res.json(response);
+    res.json(toResponse(profile));
   } catch (error) {
     console.error("Get user profile error:", error);
     res.status(500).json({ error: "Failed to load profile" });
@@ -212,18 +222,9 @@ export async function updateUserProfile(req, res) {
       },
     });
 
-    // Parse JSON for response
-    const response = {
-      ...profile,
-      skills: Array.isArray(profile.skills) ? profile.skills : [],
-      preferences: Array.isArray(profile.preferences)
-        ? profile.preferences
-        : [],
-    };
-
     res.json({
       message: "Profile updated successfully",
-      user: response,
+      user: toResponse(profile),
     });
   } catch (error) {
     console.error("Update user profile error:", error);

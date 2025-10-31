@@ -297,6 +297,84 @@ describe("POST /api/profiles", () => {
   });
 });
 
+describe("PUT /api/profiles", () => {
+  it("requires authentication", async () => {
+    const res = await request(app)
+      .put(BASE_PROFILES)
+      .send(makeProfilePayload());
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("returns 404 when updating a missing profile", async () => {
+    const { authHeader } = await registerUser();
+    const res = await request(app)
+      .put(BASE_PROFILES)
+      .set(authHeader)
+      .send(makeProfilePayload());
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toHaveProperty("error", "Profile not found");
+  });
+
+  it("updates existing profile successfully", async () => {
+    const { authHeader } = await registerUser();
+    const initialPayload = makeProfilePayload();
+    await request(app).post(BASE_PROFILES).set(authHeader).send(initialPayload);
+
+    const res = await request(app)
+      .put(BASE_PROFILES)
+      .set(authHeader)
+      .send(
+        makeProfilePayload({
+          fullName: "Updated PUT User",
+          city: "Dallas",
+        })
+      );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({
+      fullName: "Updated PUT User",
+      city: "Dallas",
+    });
+  });
+
+  it("validates payloads on update", async () => {
+    const { authHeader } = await registerUser();
+    await request(app)
+      .post(BASE_PROFILES)
+      .set(authHeader)
+      .send(makeProfilePayload());
+
+    const res = await request(app)
+      .put(BASE_PROFILES)
+      .set(authHeader)
+      .send(makeProfilePayload({ zipcode: "bad" }));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.fieldErrors).toHaveProperty("zipcode");
+  });
+
+  it("handles database errors gracefully", async () => {
+    const { authHeader } = await registerUser();
+    await request(app)
+      .post(BASE_PROFILES)
+      .set(authHeader)
+      .send(makeProfilePayload());
+
+    const spy = jest
+      .spyOn(prisma.userProfile, "update")
+      .mockRejectedValueOnce(new Error("db down"));
+
+    const res = await request(app)
+      .put(BASE_PROFILES)
+      .set(authHeader)
+      .send(makeProfilePayload());
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toHaveProperty("error", "Failed to update profile");
+    spy.mockRestore();
+  });
+});
+
 describe("GET /api/users/:id (legacy)", () => {
   it("requires authentication", async () => {
     const res = await request(app).get(`${BASE_USERS}/some-id`);
