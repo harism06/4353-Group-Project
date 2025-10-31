@@ -8,6 +8,7 @@ let prisma;
 if (isTest) {
   const users = [];
   const profiles = [];
+  const events = [];
 
   const pick = (obj, select) => {
     if (!select) return obj;
@@ -72,6 +73,86 @@ if (isTest) {
       async deleteMany() {
         profiles.length = 0;
         return { count: 0 };
+      },
+    },
+    eventDetails: {
+      async findMany({ orderBy } = {}) {
+        const list = [...events];
+        if (orderBy?.eventDate) {
+          list.sort((a, b) =>
+            orderBy.eventDate === "asc"
+              ? a.eventDate - b.eventDate
+              : b.eventDate - a.eventDate
+          );
+        }
+        return list.map((e) => ({ ...e }));
+      },
+      async findUnique({ where } = {}) {
+        if (!where?.id) return null;
+        const found = events.find((e) => e.id === where.id);
+        return found ? { ...found } : null;
+      },
+      async create({ data } = {}) {
+        const now = new Date();
+        const record = {
+          id: genId(),
+          name: data.name,
+          description: data.description,
+          location: data.location,
+          skills: Array.isArray(data.skills) ? data.skills : data.skills ?? [],
+          urgency: data.urgency,
+          eventDate: data.eventDate instanceof Date ? data.eventDate : new Date(data.eventDate),
+          createdAt: now,
+          updatedAt: now,
+        };
+        events.push(record);
+        return { ...record };
+      },
+      async update({ where, data } = {}) {
+        const idx = events.findIndex((e) => e.id === where?.id);
+        if (idx === -1) {
+          const err = new Error("Not found");
+          err.code = "P2025";
+          throw err;
+        }
+        events[idx] = {
+          ...events[idx],
+          name: data.name ?? events[idx].name,
+          description: data.description ?? events[idx].description,
+          location: data.location ?? events[idx].location,
+          skills: data.skills ?? events[idx].skills,
+          urgency: data.urgency ?? events[idx].urgency,
+          eventDate:
+            data.eventDate instanceof Date
+              ? data.eventDate
+              : data.eventDate
+              ? new Date(data.eventDate)
+              : events[idx].eventDate,
+          updatedAt: new Date(),
+        };
+        return { ...events[idx] };
+      },
+      async delete({ where } = {}) {
+        const idx = events.findIndex((e) => e.id === where?.id);
+        if (idx === -1) {
+          const err = new Error("Not found");
+          err.code = "P2025";
+          throw err;
+        }
+        const [removed] = events.splice(idx, 1);
+        return { ...removed };
+      },
+      async deleteMany({ where } = {}) {
+        if (where?.name?.startsWith) {
+          const start = where.name.startsWith;
+          const keep = events.filter((e) => !String(e.name).startsWith(start));
+          const count = events.length - keep.length;
+          events.splice(0, events.length, ...keep);
+          return { count };
+        }
+        const count = events.length;
+        events.length = 0;
+        return { count };
       },
     },
     async $disconnect() {},

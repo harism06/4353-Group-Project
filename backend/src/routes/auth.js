@@ -148,7 +148,9 @@ r.get("/auth/me", requireAuth, async (req, res) => {
  * POST /api/auth/logout
  */
 r.post("/auth/logout", requireAuth, (_req, res) => {
-  res.clearCookie("token", cookieOpts);
+  // Express v5 deprecates passing maxAge to clearCookie; clone without maxAge to avoid warning
+  const { maxAge, ...clearCookieOpts } = cookieOpts;
+  res.clearCookie("token", clearCookieOpts);
   return res.status(204).end();
 });
 

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --detectOpenHandles --coverage --testPathPattern='tests/(auth|middleware_auth|event|profile|match)\\.test\\.js'",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --detectOpenHandles --coverage --testPathPattern=\"tests/(auth|middleware_auth|event|profile|match)\\.test\\.js\"",
     "coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage"
   },
   "jest": {

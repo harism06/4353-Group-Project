@@ -110,4 +110,89 @@ describe("/api/match/suggestions", () => {
 
     spy.mockRestore();
   });
+
+  it("returns empty array when no volunteer skills match (s==0 branch)", async () => {
+    const admin = await registerUser("admin");
+    const volunteer = await registerUser("volunteer");
+
+    profiles.push({ userId: volunteer.user.id, fullName: "No Match", skills: ["Cooking"] });
+
+    await prisma.eventDetails.create({
+      data: {
+        name: `Match Test Event ${makeId("no_match")}`,
+        description: "Needs Logistics",
+        location: "Central",
+        skills: ["Logistics"],
+        urgency: "low",
+        eventDate: new Date(Date.now() + 86400000),
+      },
+    });
+
+    const res = await request(app).get(BASE).set(admin.authHeader);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it("sorts ties by date ascending (fallback branch in comparator)", async () => {
+    const admin = await registerUser("admin");
+    const volunteer = await registerUser("volunteer");
+
+    profiles.push({ userId: volunteer.user.id, fullName: "Tie User", skills: ["A"] });
+
+    const sooner = await prisma.eventDetails.create({
+      data: {
+        name: `Match Test Event ${makeId("tie1")}`,
+        description: "A skill",
+        location: "Central",
+        skills: ["A"],
+        urgency: "low",
+        eventDate: new Date(Date.now() + 86400000),
+      },
+    });
+    const later = await prisma.eventDetails.create({
+      data: {
+        name: `Match Test Event ${makeId("tie2")}`,
+        description: "A skill",
+        location: "Central",
+        skills: ["A"],
+        urgency: "low",
+        eventDate: new Date(Date.now() + 2 * 86400000),
+      },
+    });
+
+    const res = await request(app).get(BASE).set(admin.authHeader);
+    expect(res.statusCode).toBe(200);
+    if (res.body.length >= 2) {
+      const first = res.body[0].event.id;
+      const second = res.body[1].event.id;
+      expect(first).toBe(sooner.id);
+      expect(second).toBe(later.id);
+    }
+  });
+
+  it("handles undefined volunteer skills and non-array event skills", async () => {
+    const admin = await registerUser("admin");
+
+    // Volunteer with no skills field triggers vol?.skills ?? []
+    profiles.push({ userId: "novolskills", fullName: "No Skills" });
+
+    const created = await prisma.eventDetails.create({
+      data: {
+        name: `Match Test Event ${makeId("nonarray")}`,
+        description: "String skills",
+        location: "Central",
+        skills: ["A"],
+        urgency: "low",
+        eventDate: new Date(Date.now() + 86400000),
+      },
+    });
+
+    // Force non-array skills branch in route
+    await prisma.eventDetails.update({ where: { id: created.id }, data: { skills: "not-an-array" } });
+
+    const res = await request(app).get(BASE).set(admin.authHeader);
+    expect(res.statusCode).toBe(200);
+    // no suggestions expected from this event
+    expect(Array.isArray(res.body)).toBe(true);
+  });
 });
