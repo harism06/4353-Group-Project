@@ -39,14 +39,11 @@ export default function RegisterPage() {
         name: values.name,
       });
 
-      // persist auth
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("userId", user.id);
 
-      // update context (optional but nice for Navbar, etc.)
       setUser(user);
-
       navigate("/dashboard");
     } catch (e) {
       console.error(e);
@@ -55,7 +52,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-100">
+    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-200 text-gray-900">
       <h1 className="text-2xl font-semibold mb-4 text-center">Register</h1>
 
       {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
@@ -66,7 +63,7 @@ export default function RegisterPage() {
           <input
             type="text"
             {...register("name")}
-            className="w-full border rounded-md p-2 bg-gray-200"
+            className="w-full border rounded-md p-2 bg-gray-100"
             autoComplete="name"
             placeholder="Jane Doe"
           />
@@ -80,7 +77,7 @@ export default function RegisterPage() {
           <input
             type="text"
             {...register("username")}
-            className="w-full border rounded-md p-2 bg-gray-200"
+            className="w-full border rounded-md p-2 bg-gray-100"
             autoComplete="username"
             placeholder="janedoe"
           />
@@ -96,7 +93,7 @@ export default function RegisterPage() {
           <input
             type="email"
             {...register("email")}
-            className="w-full border rounded-md p-2 bg-gray-200"
+            className="w-full border rounded-md p-2 bg-gray-100"
             autoComplete="email"
             placeholder="you@example.com"
           />
@@ -110,7 +107,7 @@ export default function RegisterPage() {
           <input
             type="password"
             {...register("password")}
-            className="w-full border rounded-md p-2 bg-gray-200"
+            className="w-full border rounded-md p-2 bg-gray-100"
             autoComplete="new-password"
             placeholder="•••••••"
           />
