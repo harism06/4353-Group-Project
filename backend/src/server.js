@@ -12,6 +12,7 @@ import events from "./routes/events.js";
 import history from "./routes/history.js";
 import notifications from "./routes/notifications.js";
 import match from "./routes/match.js";
+import adminReports from "./routes/adminReports.js";
 import { seedMem } from "./store/mem.js";
 
 console.log("[DB]", process.env.DATABASE_URL);
@@ -41,6 +42,7 @@ app.use("/api", events);
 app.use("/api", history);
 app.use("/api", notifications);
 app.use("/api", match);
+app.use("/api", adminReports);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

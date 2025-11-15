@@ -15,7 +15,6 @@ export default function LoginPage() {
     try {
       const { token, user } = await loginUser({ identifier, password });
 
-      // store token & user so axios interceptor adds Authorization automatically
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("userId", user.id);
@@ -30,7 +29,7 @@ export default function LoginPage() {
   const hasError = Boolean(error);
 
   return (
-    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-100">
+    <section className="max-w-md mx-auto p-6 border rounded-lg shadow-sm bg-gray-200 text-gray-900">
       <h1 className="text-2xl font-semibold mb-4 text-center">Login</h1>
 
       {hasError && (
@@ -54,7 +53,7 @@ export default function LoginPage() {
             autoComplete="username"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            className="w-full border rounded-md p-2 bg-gray-200 focus:ring focus:ring-blue-200"
+            className="w-full border rounded-md p-2 bg-gray-100 focus:ring focus:ring-blue-200"
             placeholder="admin or admin@test.com"
             required
             aria-invalid={hasError ? "true" : "false"}
@@ -73,7 +72,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-md p-2 bg-gray-200 focus:ring focus:ring-blue-200"
+            className="w-full border rounded-md p-2 bg-gray-100 focus:ring focus:ring-blue-200"
             placeholder="secret12"
             required
             aria-invalid={hasError ? "true" : "false"}
