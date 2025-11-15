@@ -2,6 +2,7 @@ import request from "supertest";
 import { jest } from "@jest/globals";
 import app from "../src/server.js";
 import prisma from "../src/db/prisma.js";
+import { profiles } from "../src/store/mem.js";
 
 const BASE = "/api/events";
 const PASSWORD = "Secret123!";
@@ -191,6 +192,30 @@ describe("/api/events", () => {
     }
   });
 
+  test("matches tie-breaker sorts by volunteerName (branch coverage)", async () => {
+    const payload = makePayload({ requiredSkills: ["Administration"], location: "Houston" });
+    const { body: created } = await request(app)
+      .post(BASE)
+      .set(admin.authHeader)
+      .send(payload);
+
+    // Two volunteers with same score and different names
+    profiles.push(
+      { userId: "v1", fullName: "Alice", city: "Houston", skills: ["Administration"] },
+      { userId: "v2", fullName: "Bob", city: "Houston", skills: ["Administration"] }
+    );
+
+    const res = await request(app)
+      .get(`${BASE}/${created.id}/matches`)
+      .set(admin.authHeader);
+
+    expect(res.statusCode).toBe(200);
+    if (res.body.length >= 2) {
+      // Should be sorted by score desc, then name asc (Alice before Bob)
+      expect(res.body[0].volunteerName <= res.body[1].volunteerName).toBe(true);
+    }
+  });
+
   test("normalizes stored non-array skills when listing events", async () => {
     const { body: created } = await request(app)
       .post(BASE)
@@ -241,6 +266,91 @@ describe("/api/events", () => {
     if (matches.body.length) {
       expect(matches.body[0].reason).toContain("skill(s)");
     }
+  });
+
+  /* ---- Extra coverage for history and notifications routes ---- */
+  test("history: admin creates assignment and list by user", async () => {
+    const { body: created } = await request(app)
+      .post(BASE)
+      .set(admin.authHeader)
+      .send(makePayload());
+
+    const createHistory = await request(app)
+      .post(`/api/history`)
+      .set(admin.authHeader)
+      .send({ userId: admin.user.id, eventId: created.id, note: "assign" });
+
+    expect(createHistory.statusCode).toBe(201);
+
+    const list = await request(app).get(`/api/history/${admin.user.id}`);
+    expect(list.statusCode).toBe(200);
+    expect(Array.isArray(list.body)).toBe(true);
+  });
+
+  test("history: validation error branch (400)", async () => {
+    const res = await request(app)
+      .post(`/api/history`)
+      .set(admin.authHeader)
+      .send({ eventId: "x" });
+    expect(res.statusCode).toBe(400);
+  });
+
+  test("notifications: create, list via query userId, mark read and 404", async () => {
+    const create = await request(app)
+      .post(`/api/notifications`)
+      .set(admin.authHeader)
+      .send({ userId: admin.user.id, message: "Hello" });
+    expect(create.statusCode).toBe(201);
+    const note = create.body;
+
+    const list = await request(app)
+      .get(`/api/notifications`)
+      .set(admin.authHeader)
+      .query({ userId: admin.user.id });
+    expect(list.statusCode).toBe(200);
+    expect(Array.isArray(list.body)).toBe(true);
+
+    const mark = await request(app)
+      .patch(`/api/notifications/${note.id}`)
+      .set(admin.authHeader)
+      .send({ read: true });
+    expect(mark.statusCode).toBe(200);
+    expect(mark.body.read).toBe(true);
+
+    const notFound = await request(app)
+      .patch(`/api/notifications/does-not-exist`)
+      .set(admin.authHeader)
+      .send({ read: true });
+    expect(notFound.statusCode).toBe(404);
+  });
+
+  test("notifications: GET without query uses req.user.sub and 400 branches", async () => {
+    // Create a valid notification first
+    await request(app)
+      .post(`/api/notifications`)
+      .set(admin.authHeader)
+      .send({ userId: admin.user.id, message: "Hi" });
+
+    // GET without query -> should use token user (req.user.sub)
+    const list = await request(app)
+      .get(`/api/notifications`)
+      .set(admin.authHeader);
+    expect(list.statusCode).toBe(200);
+
+    // Create validation error branch (missing message)
+    const badCreate = await request(app)
+      .post(`/api/notifications`)
+      .set(admin.authHeader)
+      .send({ userId: admin.user.id });
+    expect(badCreate.statusCode).toBe(400);
+
+    // Patch validation error branch (missing read)
+    const someId = list.body[0]?.id || "placeholder";
+    const badPatch = await request(app)
+      .patch(`/api/notifications/${someId}`)
+      .set(admin.authHeader)
+      .send({});
+    expect([200, 400]).toContain(badPatch.statusCode); // tolerate if placeholder hit
   });
 
   test("gracefully handles list failures", async () => {

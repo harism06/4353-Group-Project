@@ -1,45 +1,14 @@
 import { Router } from "express";
-import { requireAuth, requireRole } from "../middleware/auth.js";
-import prisma from "../db/prisma.js";
+import { requireAuth } from "../middleware/auth.js";
+import {
+  getUserProfile,
+  updateUserProfile,
+} from "../controllers/profileController.js";
 
-const r = Router();
-const sanitize = (u) => ({
-  id: u.id,
-  username: u.username,
-  email: u.email,
-  role: u.role,
-  createdAt: u.createdAt,
-});
+const router = Router();
 
-// Admin: list all users (optional)
-r.get("/users", requireAuth, requireRole("admin"), async (_req, res) => {
-  try {
-    const records = await prisma.userCredentials.findMany({
-      orderBy: { createdAt: "asc" },
-    });
-    res.json(records.map(sanitize));
-  } catch (err) {
-    console.error("[users] list failed", err);
-    res.status(500).json({ error: "Failed to load users" });
-  }
-});
+// Legacy routes for ProfilePage.tsx compatibility
+router.get("/users/:id", requireAuth, getUserProfile);
+router.put("/users/:id", requireAuth, updateUserProfile);
 
-// Self or Admin: get user by id
-r.get("/users/:id", requireAuth, async (req, res) => {
-  try {
-    const u = await prisma.userCredentials.findUnique({
-      where: { id: req.params.id },
-    });
-    if (!u) return res.status(404).json({ error: "Not found" });
-    const isSelf = req.user.sub === u.id;
-    const isAdmin = req.user.role === "admin";
-    if (!isSelf && !isAdmin)
-      return res.status(403).json({ error: "Forbidden" });
-    res.json(sanitize(u));
-  } catch (err) {
-    console.error("[users] detail failed", err);
-    res.status(500).json({ error: "Failed to load user" });
-  }
-});
-
-export default r;
+export default router;

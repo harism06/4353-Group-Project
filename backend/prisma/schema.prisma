@@ -14,6 +14,27 @@ model UserCredentials {
   password  String
   role      String   @default("volunteer")
   createdAt DateTime @default(now())
+  
+  // Relation to UserProfile
+  profile   UserProfile?
+}
+
+model UserProfile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         UserCredentials @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  fullName     String
+  address      String
+  city         String
+  state        String
+  zipcode      String
+  skills       Json     // Array of strings
+  preferences  Json     // Array of strings
+  availability String   // Comma-separated dates
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model EventDetails {

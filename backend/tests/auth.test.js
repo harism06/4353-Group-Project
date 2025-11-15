@@ -68,6 +68,20 @@ describe("POST /auth/register", () => {
     expect(stored?.username).toBe(username);
   });
 
+  it("respects explicit role and does not default to volunteer", async () => {
+    const email = makeEmail("register_role");
+    const username = makeUsername("register_role");
+    const res = await request(app).post(`${BASE}/register`).send({
+      username,
+      email,
+      password: VALID_PASSWORD,
+      role: "admin",
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.user).toMatchObject({ email, username, role: "admin" });
+  });
+
   it("returns conflict for duplicate emails", async () => {
     const email = makeEmail("duplicate");
     const username = makeUsername("duplicate");
@@ -170,6 +184,24 @@ describe("POST /auth/login", () => {
     expect(res.body.user).toMatchObject({ email, username });
   });
 
+  it("allows logging in with only email field (no identifier)", async () => {
+    const res = await request(app).post(`${BASE}/login`).send({
+      email,
+      password: VALID_PASSWORD,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.user).toMatchObject({ email, username });
+  });
+
+  it("allows logging in with only username field (no identifier)", async () => {
+    const res = await request(app).post(`${BASE}/login`).send({
+      username,
+      password: VALID_PASSWORD,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.user).toMatchObject({ email, username });
+  });
+
   it("rejects unknown users", async () => {
     const res = await request(app)
       .post(`${BASE}/login`)
@@ -248,6 +280,27 @@ describe("GET /auth/me", () => {
     // Your handler returns 404 for not found
     expect(res.statusCode).toBe(404);
   });
+
+  it("returns 500 if database error occurs while loading session", async () => {
+    const email = makeEmail("me_err");
+    const username = makeUsername("me_err");
+    const register = await request(app).post(`${BASE}/register`).send({
+      username,
+      email,
+      password: VALID_PASSWORD,
+    });
+    const cookie = getAuthCookie(register);
+
+    const spy = jest
+      .spyOn(prisma.userCredentials, "findUnique")
+      .mockRejectedValueOnce(new Error("db down"));
+
+    const res = await request(app).get(`${BASE}/me`).set("Cookie", cookie);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toHaveProperty("error", "Failed to load session");
+
+    spy.mockRestore();
+  });
 });
 
 describe("POST /auth/logout", () => {
@@ -312,6 +365,25 @@ describe("Prisma unique constraint branches", () => {
     jest
       .spyOn(prisma.userCredentials, "create")
       .mockRejectedValueOnce({ code: "P2002", meta: { target: ["username"] } });
+
+    const res = await request(app).post(`${BASE}/register`).send({
+      username,
+      email,
+      password: VALID_PASSWORD,
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error).toBe("Username already used");
+  });
+
+  it("handles Prisma P2002 with string target on register", async () => {
+    const email = makeEmail("p2002_string");
+    const username = makeUsername("p2002_string");
+
+    jest.spyOn(prisma.userCredentials, "findFirst").mockResolvedValueOnce(null);
+    jest
+      .spyOn(prisma.userCredentials, "create")
+      .mockRejectedValueOnce({ code: "P2002", meta: { target: "username" } });
 
     const res = await request(app).post(`${BASE}/register`).send({
       username,
