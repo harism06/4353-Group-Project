@@ -105,6 +105,13 @@ export default function Navbar() {
                 </NavLink>
               )}
 
+              {/* Admins see Reports */}
+              {isAdmin() && (
+                <NavLink to="/reports" className={link}>
+                  Reports
+                </NavLink>
+              )}
+
               {/* Bell */}
               <button
                 aria-label="Notifications"

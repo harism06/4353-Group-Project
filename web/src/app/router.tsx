@@ -15,6 +15,7 @@ import Events from "@/pages/Events";
 import Profile from "@/pages/Profile";
 import MatchPage from "@/features/matching/MatchPage";
 import HistoryPage from "@/features/history/HistoryPage";
+import ReportsPage from "@/features/reports/ReportsPage";
 
 import { isAdmin } from "@/app/role";
 
@@ -39,12 +40,20 @@ export const router = createBrowserRouter([
         children: [
           { path: "dashboard", element: <Dashboard /> },
           { path: "profile", element: <Profile /> },
-          // Admin-only route (hidden in navbar and guarded here)
+          // Admin-only routes
           {
             path: "match",
             element: (
               <AdminRoute>
                 <MatchPage />
+              </AdminRoute>
+            ),
+          },
+          {
+            path: "reports",
+            element: (
+              <AdminRoute>
+                <ReportsPage />
               </AdminRoute>
             ),
           },
