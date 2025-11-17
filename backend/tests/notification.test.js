@@ -4,13 +4,10 @@ const notifications = require("../data/notifications");
 const { randomUUID } = require("crypto");
 const notificationSchema = require("../validations/notificationSchema");
 
-/**
- * @file Notification API tests.
- * @module backend/tests/notification.test
- */
+// Notification API tests
 
 describe("Notification API", () => {
-  // Clear notifications array before each test to ensure test isolation
+  // Clear notifications before each test
   beforeEach(() => {
     notifications.length = 0;
     jest.restoreAllMocks();
@@ -21,7 +18,6 @@ describe("Notification API", () => {
       const newNotification = {
         userId: randomUUID(),
         message: "Test notification message",
-        // eventId is optional
       };
 
       const response = await request(app)
@@ -84,7 +80,7 @@ describe("Notification API", () => {
     test("should return 400 if message is too long", async () => {
       const newNotification = {
         userId: randomUUID(),
-        message: "a".repeat(501), // Message exceeding 500 characters
+        message: "a".repeat(501),
       };
 
       const response = await request(app)
@@ -135,7 +131,7 @@ describe("Notification API", () => {
     });
 
     test("should return 500 if an unexpected server error occurs", async () => {
-      // Mock the schema parse method to throw a non-Zod error
+      // Mock schema to throw a non-Zod error
       jest.spyOn(notificationSchema.createNotificationInputSchema, "parse").mockImplementationOnce(() => {
         throw new Error("Unexpected server error");
       });

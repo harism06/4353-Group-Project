@@ -6,21 +6,7 @@ const {
   getHistoryByUserIdSchema,
 } = require("../validations/historySchema");
 
-/**
- * @file Volunteer history controller functions.
- * @module backend/controllers/historyController
- */
-
-/**
- * Handles POST request to create a new history record.
- * Validates the request body against `createHistoryInputSchema`.
- * If valid, generates a UUID for the record, adds a timestamp, saves it to mock data,
- * and returns the new record with a 201 status.
- * If validation fails, returns a 400 status with validation errors.
- * @function
- * @param {Object} req - Express request object. Expected to contain history data in `req.body`.
- * @param {Object} res - Express response object.
- */
+// Volunteer history controller functions
 exports.createHistoryRecord = (req, res) => {
   console.log("Received history body:", req.body);
 
@@ -39,7 +25,7 @@ exports.createHistoryRecord = (req, res) => {
 
     history.push(newHistoryRecord);
 
-    // Best-effort DB persistence without breaking existing behavior
+    // Try to save to DB if Prisma is available
     (async () => {
       try {
         const { PrismaClient } = require('@prisma/client');
@@ -72,16 +58,6 @@ exports.createHistoryRecord = (req, res) => {
   }
 };
 
-/**
- * Handles GET request to retrieve a user's history records.
- * Validates the `userId` parameter against `getHistoryByUserIdSchema`.
- * If valid, filters the mock history data to find records for the specified user ID
- * and returns them with a 200 status. If no records are found, returns an empty array.
- * If validation fails, returns a 400 status with validation errors.
- * @function
- * @param {Object} req - Express request object. Expected to contain `userId` in `req.params`.
- * @param {Object} res - Express response object.
- */
 exports.getHistoryByUserId = (req, res) => {
   try {
     console.log(" Received history body:", req.body);

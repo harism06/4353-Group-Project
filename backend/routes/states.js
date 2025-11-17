@@ -2,10 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getStates } = require('../controllers/stateController');
 
-/**
- * @file States routes.
- * @module backend/routes/states
- */
+// States routes
 
 router.get('/', getStates);
 

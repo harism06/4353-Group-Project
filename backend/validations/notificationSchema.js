@@ -1,15 +1,7 @@
 
 const { z } = require('zod');
 
-/**
- * @file Zod validation schema for notifications.
- * @module backend/validations/notificationSchema
- */
-
-/**
- * Zod schema for validating notification creation input from request body.
- * Defines the structure and types for incoming notification data.
- */
+// Zod validation schema for notifications
 const createNotificationInputSchema = z.object({
   userId: z.string().uuid({ message: "Invalid UUID format for user ID." }),
   eventId: z.string().uuid({ message: "Invalid UUID format for event ID." }).optional(),

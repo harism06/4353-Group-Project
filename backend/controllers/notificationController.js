@@ -4,21 +4,7 @@ const {
   createNotificationInputSchema,
 } = require("../validations/notificationSchema");
 
-/**
- * @file Notification controller functions.
- * @module backend/controllers/notificationController
- */
-
-/**
- * Handles POST request to create a new notification.
- * Validates the request body against `createNotificationInputSchema`.
- * If valid, generates a UUID for the notification, adds a timestamp, saves it to mock data,
- * and returns the new notification with a 201 status.
- * If validation fails, returns a 400 status with validation errors.
- * @function
- * @param {Object} req - Express request object. Expected to contain notification data in `req.body`.
- * @param {Object} res - Express response object.
- */
+// Notification controller functions
 exports.createNotification = (req, res) => {
   try {
     // Validate the incoming request body
@@ -34,10 +20,10 @@ exports.createNotification = (req, res) => {
     };
 
     notifications.push(newNotification);
-    // Optional: write to DB notifications table if later added
-    // Reuse VolunteerHistory as a trigger for 'assigned' notification example
+    
+    // Check if this is an assignment notification for future hooks
     if (String(validatedInput.message).toLowerCase().includes('assigned')) {
-      // no-op; placeholder for future assignment hooks
+      // Future: could trigger additional assignment logic here
     }
     return res.status(201).json(newNotification);
   } catch (error) {

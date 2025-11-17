@@ -4,13 +4,10 @@ const history = require("../data/history");
 const { randomUUID } = require("crypto");
 const historySchema = require("../validations/historySchema");
 
-/**
- * @file Volunteer history API tests.
- * @module backend/tests/history.test
- */
+// Volunteer history API tests
 
 describe("History API", () => {
-  // Clear history array before each test to ensure test isolation
+  // Clear history before each test
   beforeEach(() => {
     history.length = 0;
     jest.restoreAllMocks();
@@ -128,7 +125,7 @@ describe("History API", () => {
     });
 
     test("should return 500 if an unexpected server error occurs during creation", async () => {
-      // Mock the schema parse method to throw a non-Zod error
+      // Mock schema to throw a non-Zod error
       jest.spyOn(historySchema.createHistoryInputSchema, "parse").mockImplementationOnce(() => {
         throw new Error("Unexpected database error");
       });
@@ -158,7 +155,7 @@ describe("History API", () => {
       const eventId1 = randomUUID();
       const eventId2 = randomUUID();
 
-      // Add some mock history records
+      // Add test history records
       history.push(
         {
           id: randomUUID(),
@@ -215,7 +212,7 @@ describe("History API", () => {
     test("should return 500 if an unexpected server error occurs during retrieval", async () => {
       const validUserId = randomUUID();
       
-      // Mock the schema parse method to throw a non-Zod error
+      // Mock schema to throw a non-Zod error
       jest.spyOn(historySchema.getHistoryByUserIdSchema, "parse").mockImplementationOnce(() => {
         throw new Error("Unexpected server error during retrieval");
       });

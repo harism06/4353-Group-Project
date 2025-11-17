@@ -1,4 +1,4 @@
-// Fallback static states to avoid runtime DB dependency during tests
+// Static list of US states
 const STATES = [
   { code: 'AL', name: 'Alabama' },
   { code: 'AK', name: 'Alaska' },
@@ -52,17 +52,8 @@ const STATES = [
   { code: 'WY', name: 'Wyoming' },
 ];
 
-/**
- * @file State controller functions.
- * @module backend/controllers/stateController
- */
-
-/**
- * GET /api/states
- * Returns the list of U.S. states (code, name).
- */
+// State controller functions
 exports.getStates = async (_req, res) => {
-  // Return static list (seed mirrors this for DB)
   return res.status(200).json(STATES);
 };
 

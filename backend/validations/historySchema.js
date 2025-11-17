@@ -1,15 +1,7 @@
 
 const { z } = require('zod');
 
-/**
- * @file Zod validation schema for volunteer history records.
- * @module backend/validations/historySchema
- */
-
-/**
- * Zod schema for validating volunteer history record creation input from request body.
- * Defines the structure and types for incoming history data.
- */
+// Zod validation schema for volunteer history records
 const createHistoryInputSchema = z.object({
   userId: z.string().uuid({ message: "Invalid UUID format for user ID." }),
   eventId: z.string().uuid({ message: "Invalid UUID format for event ID." }),
@@ -17,9 +9,6 @@ const createHistoryInputSchema = z.object({
   details: z.string().optional(),
 });
 
-/**
- * Zod schema for validating the user ID parameter when fetching history.
- */
 const getHistoryByUserIdSchema = z.object({
   userId: z.string().uuid({ message: "Invalid UUID format for user ID." }),
 });
