@@ -2,7 +2,7 @@ import express from "express";
 import { requireAdmin } from "../middleware/adminOnly.js";
 import {
   getEventsReport,
-  getUsersReport,
+  getVolunteersReport,
 } from "../controllers/adminReportsController.js";
 
 const router = express.Router();
@@ -10,10 +10,12 @@ const router = express.Router();
 // All /admin/reports/* require admin
 router.use("/admin/reports", requireAdmin);
 
-// GET /api/admin/reports/events?startDate=&endDate=&urgency=&format=pdf
+// GET /api/admin/reports/events(.csv|.pdf)
 router.get("/admin/reports/events", getEventsReport);
+router.get("/admin/reports/events.:format", getEventsReport);
 
-// GET /api/admin/reports/users?role=volunteer&format=pdf
-router.get("/admin/reports/users", getUsersReport);
+// GET /api/admin/reports/volunteers(.csv|.pdf)
+router.get("/admin/reports/volunteers", getVolunteersReport);
+router.get("/admin/reports/volunteers.:format", getVolunteersReport);
 
 export default router;

@@ -1,12 +1,22 @@
-import prisma from "../db/prisma.js";
 import {
   eventsReportQuerySchema,
-  usersReportQuerySchema,
+  volunteersReportQuerySchema,
 } from "../validations/reportSchema.js";
-import { sendEventsPdf, sendUsersPdf } from "../services/reportPdfService.js";
+import {
+  buildEventsReportData,
+  buildVolunteersReportData,
+} from "../services/reportDataService.js";
+import { sendEventsPdf, sendVolunteersPdf } from "../services/reportPdfService.js";
+import { sendEventsCsv, sendVolunteersCsv } from "../services/reportCsvService.js";
+
+const resolveFormat = (req, fallback = "pdf") =>
+  (req.params?.format || req.query?.format || fallback).toLowerCase();
 
 export async function getEventsReport(req, res) {
-  const parseResult = eventsReportQuerySchema.safeParse(req.query);
+  const parseResult = eventsReportQuerySchema.safeParse({
+    ...req.query,
+    format: resolveFormat(req),
+  });
   if (!parseResult.success) {
     return res.status(400).json({
       error: "Invalid query parameters",
@@ -14,36 +24,24 @@ export async function getEventsReport(req, res) {
     });
   }
 
-  const { startDate, endDate, urgency, format } = parseResult.data;
-
-  // Build Prisma "where"
-  const where = {};
-  if (startDate || endDate) {
-    where.eventDate = {};
-    if (startDate) where.eventDate.gte = new Date(startDate);
-    if (endDate) where.eventDate.lte = new Date(endDate);
-  }
-  if (urgency) {
-    where.urgency = urgency;
-  }
-
-  const events = await prisma.eventDetails.findMany({
-    where,
-    orderBy: { eventDate: "asc" },
-  });
-
-  const filters = { startDate, endDate, urgency };
+  const { format, ...filters } = parseResult.data;
+  const data = await buildEventsReportData(filters);
 
   if (format === "pdf") {
-    return sendEventsPdf({ res, filters, events });
+    return sendEventsPdf({ res, ...data });
+  }
+  if (format === "csv") {
+    return sendEventsCsv({ res, ...data });
   }
 
-  // default JSON (useful for debugging / demo)
-  return res.json({ filters, events });
+  return res.json(data);
 }
 
-export async function getUsersReport(req, res) {
-  const parseResult = usersReportQuerySchema.safeParse(req.query);
+export async function getVolunteersReport(req, res) {
+  const parseResult = volunteersReportQuerySchema.safeParse({
+    ...req.query,
+    format: resolveFormat(req),
+  });
   if (!parseResult.success) {
     return res.status(400).json({
       error: "Invalid query parameters",
@@ -51,21 +49,15 @@ export async function getUsersReport(req, res) {
     });
   }
 
-  const { role, format } = parseResult.data;
-
-  const where = {};
-  if (role) where.role = role;
-
-  const users = await prisma.userCredentials.findMany({
-    where,
-    orderBy: { createdAt: "asc" },
-  });
-
-  const filters = { role };
+  const { format, ...filters } = parseResult.data;
+  const data = await buildVolunteersReportData(filters);
 
   if (format === "pdf") {
-    return sendUsersPdf({ res, filters, users });
+    return sendVolunteersPdf({ res, ...data });
+  }
+  if (format === "csv") {
+    return sendVolunteersCsv({ res, ...data });
   }
 
-  return res.json({ filters, users });
+  return res.json(data);
 }

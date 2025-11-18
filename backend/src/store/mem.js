@@ -109,4 +109,23 @@ export async function seedMem() {
       eventDate: ev.eventDate.toISOString(),
     }))
   );
+
+  if (persisted.length) {
+    const existingAssignments = await prisma.volunteerAssignment.findMany({
+      where: { volunteerId: volunteer.id },
+    });
+    if (!existingAssignments.length) {
+      const firstEvent = persisted[0];
+      await prisma.volunteerAssignment.createMany({
+        data: [
+          {
+            eventId: firstEvent.id,
+            volunteerId: volunteer.id,
+            status: "completed",
+            hours: 4,
+          },
+        ],
+      });
+    }
+  }
 }
