@@ -72,3 +72,22 @@ Event CRUD and validation scenarios are covered in `backend/tests/events.test.js
 ```bash
 node --experimental-vm-modules ./node_modules/jest/bin/jest.js tests/events.test.js
 ```
+
+## Admin Reports API
+
+Two secured endpoints power the event and volunteer reports. They require an admin JWT (handled by the `requireAdmin` middleware) and support JSON previews plus CSV/PDF downloads:
+
+- `GET /api/admin/reports/events[.format]`
+  - Query params: `startDate`, `endDate`, `eventId`, `format=json|csv|pdf`
+  - Response body (JSON): `{ filters, summary, events }`
+    - `summary` includes total events, volunteers, hours, completed/pending assignments.
+    - `events` lists each event with assignment counts, hours, and the volunteers assigned.
+  - CSV/PDF responses are streamed with `Content-Disposition: attachment; filename="events_report.<ext>"`.
+
+- `GET /api/admin/reports/volunteers[.format]`
+  - Query params: `startDate`, `endDate`, `skills` (comma separated), `format=json|csv|pdf`
+  - Response body (JSON): `{ filters, summary, volunteers }`
+    - Each volunteer row contains participation counts, completed vs. pending assignments, total hours, skills, and recent events.
+  - CSV/PDF outputs share the same structure as the JSON payload to keep front-end previews aligned with downloaded files.
+
+Both routes aggregate data through Prisma, including total hours contributed per user, participation counts, and assignment status tallies. The CSV formatter prepends a summary section before the tabular data so offline reviewers can validate totals quickly. Use the optional `.csv`/`.pdf` suffixes (e.g., `/admin/reports/volunteers.csv`) for friendly download URLs, or continue passing `?format=` to stay backwards compatible with existing clients.

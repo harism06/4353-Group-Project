@@ -14,9 +14,10 @@ model UserCredentials {
   password  String
   role      String   @default("volunteer")
   createdAt DateTime @default(now())
-  
+
   // Relation to UserProfile
   profile   UserProfile?
+  assignments VolunteerAssignment[]
 }
 
 model UserProfile {
@@ -47,10 +48,33 @@ model EventDetails {
   eventDate   DateTime
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  assignments VolunteerAssignment[]
 }
 
 enum UrgencyLevel {
   low
   medium
   high
+}
+
+enum AssignmentStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+model VolunteerAssignment {
+  id           String            @id @default(uuid())
+  eventId      String
+  volunteerId  String
+  status       AssignmentStatus  @default(pending)
+  hours        Float             @default(0)
+  notes        String?
+  assignedAt   DateTime          @default(now())
+  completedAt  DateTime?
+  updatedAt    DateTime          @updatedAt
+
+  event        EventDetails      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  volunteer    UserCredentials   @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
 }

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { isAdmin } from "@/app/role";
 import {
   downloadEventsReportPdf,
-  downloadUsersReportPdf,
+  downloadVolunteersReportPdf,
 } from "@/api/adminReports";
 
 export default function Dashboard() {
@@ -15,12 +15,12 @@ export default function Dashboard() {
     }
   };
 
-  const handleDownloadUsers = async () => {
+  const handleDownloadVolunteers = async () => {
     try {
-      await downloadUsersReportPdf();
+      await downloadVolunteersReportPdf();
     } catch (err) {
       console.error(err);
-      alert("Failed to download users report");
+      alert("Failed to download volunteers report");
     }
   };
 
@@ -55,10 +55,10 @@ export default function Dashboard() {
             </button>
 
             <button
-              onClick={handleDownloadUsers}
+              onClick={handleDownloadVolunteers}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
-              Download Users Report (PDF)
+              Download Volunteers Report (PDF)
             </button>
           </div>
         </div>
