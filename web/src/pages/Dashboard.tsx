@@ -28,7 +28,7 @@ export default function Dashboard() {
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
 
-      {/* Only admins can see Add Event */}
+      {/* ADMIN: Add event button */}
       {isAdmin() && (
         <Link
           to="/events"
@@ -38,7 +38,7 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* ADMIN REPORTS SECTION */}
+      {/* ADMIN REPORT SECTION */}
       {isAdmin() && (
         <div className="mt-8 p-6 bg-gray-100 rounded shadow">
           <h2 className="text-xl font-semibold mb-4">Admin Reports</h2>
@@ -64,11 +64,22 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* VOLUNTEER VIEW */}
       {!isAdmin() && (
-        <p className="mt-6 text-sm text-gray-600">
-          You are logged in as a volunteer. Admin reports are only available to
-          admin users.
-        </p>
+        <div className="mt-8 p-6 bg-gray-900 border border-gray-700 rounded-lg">
+          <h2 className="text-xl font-semibold text-blue-300 mb-3">
+            Volunteer Dashboard
+          </h2>
+          <p className="text-gray-400 mb-4">
+            Here are quick actions to help you manage your activity:
+          </p>
+
+          <ul className="list-disc pl-6 text-gray-300 space-y-2">
+            <li>View and update your profile</li>
+            <li>Check your volunteer history</li>
+            <li>Browse upcoming events</li>
+          </ul>
+        </div>
       )}
     </div>
   );
