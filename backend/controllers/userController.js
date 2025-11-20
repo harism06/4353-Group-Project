@@ -1,6 +1,11 @@
 const users = require("../data/users");
 const { userProfileSchema } = require("../validations/userSchema");
 
+exports.getAllUsers = (req, res) => {
+  const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+  res.status(200).json(usersWithoutPasswords);
+};
+
 exports.getUser = (req, res) => {
   const userId = parseInt(req.params.id);
 

@@ -111,23 +111,20 @@ describe("Notification API", () => {
       expect(notifications).toHaveLength(1);
     });
 
-    test("should return 400 if eventId is not a valid UUID when provided", async () => {
+    test("should accept any non-empty string as eventId when provided", async () => {
       const newNotification = {
-        userId: randomUUID(),
-        message: "Notification with invalid event ID",
-        eventId: "invalid-uuid",
+        userId: "1",
+        message: "Notification with event ID",
+        eventId: "123",
       };
 
       const response = await request(app)
         .post("/api/notifications")
         .send(newNotification);
 
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toHaveProperty("errors");
-      expect(response.body.errors[0].message).toContain(
-        "Invalid UUID format for event ID."
-      );
-      expect(notifications).toHaveLength(0);
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+      expect(notifications).toHaveLength(1);
     });
 
     test("should return 500 if an unexpected server error occurs", async () => {

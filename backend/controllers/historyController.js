@@ -78,3 +78,51 @@ exports.getHistoryByUserId = (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.deleteHistoryRecord = (req, res) => {
+  try {
+    const { userId, eventId } = req.query;
+
+    if (!userId || !eventId) {
+      return res.status(400).json({ message: "userId and eventId are required" });
+    }
+
+    // Find and remove all history records for this user-event combination
+    const initialLength = history.length;
+    const filtered = history.filter(
+      (record) => !(record.userId === userId && record.eventId === eventId)
+    );
+    
+    // Remove from array
+    history.length = 0;
+    history.push(...filtered);
+
+    const removedCount = initialLength - history.length;
+
+    if (removedCount === 0) {
+      return res.status(404).json({ message: "No matching history records found" });
+    }
+
+    // Try to delete from DB if Prisma is available
+    (async () => {
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        await prisma.volunteerHistory.deleteMany({
+          where: {
+            userId: String(userId),
+            eventId: String(eventId),
+          }
+        });
+        await prisma.$disconnect();
+      } catch (_e) { /* ignore DB issues in mock mode */ }
+    })();
+
+    return res.status(200).json({ 
+      message: "History records deleted successfully",
+      deletedCount: removedCount 
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
