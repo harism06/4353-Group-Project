@@ -1,0 +1,151 @@
+const request = require("supertest");
+const app = require("../server");
+const notifications = require("../data/notifications");
+const { randomUUID } = require("crypto");
+const notificationSchema = require("../validations/notificationSchema");
+
+// Notification API tests
+
+describe("Notification API", () => {
+  // Clear notifications before each test
+  beforeEach(() => {
+    notifications.length = 0;
+    jest.restoreAllMocks();
+  });
+
+  describe("POST /api/notifications", () => {
+    test("should create a new notification successfully", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+        message: "Test notification message",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+      expect(response.body.userId).toBe(newNotification.userId);
+      expect(response.body.message).toBe(newNotification.message);
+      expect(response.body).toHaveProperty("timestamp");
+      expect(response.body.read).toBe(false);
+      expect(notifications).toHaveLength(1);
+    });
+
+    test("should hit assigned branch when message contains 'assigned'", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+        message: "You have been assigned to an event",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+    });
+
+    test("should return 400 if userId is missing", async () => {
+      const newNotification = {
+        message: "Test notification message",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty("errors");
+      expect(response.body.errors[0].message).toContain("Required");
+      expect(notifications).toHaveLength(0);
+    });
+
+    test("should return 400 if message is missing", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty("errors");
+      expect(response.body.errors[0].message).toContain("Required");
+      expect(notifications).toHaveLength(0);
+    });
+
+    test("should return 400 if message is too long", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+        message: "a".repeat(501),
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toHaveProperty("errors");
+      expect(response.body.errors[0].message).toContain(
+        "Notification message cannot exceed 500 characters."
+      );
+      expect(notifications).toHaveLength(0);
+    });
+
+    test("should allow eventId to be optional", async () => {
+      const newNotification = {
+        userId: randomUUID(),
+        message: "Another test notification",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+      expect(response.body.eventId).toBeUndefined();
+      expect(notifications).toHaveLength(1);
+    });
+
+    test("should accept any non-empty string as eventId when provided", async () => {
+      const newNotification = {
+        userId: "1",
+        message: "Notification with event ID",
+        eventId: "123",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toHaveProperty("id");
+      expect(notifications).toHaveLength(1);
+    });
+
+    test("should return 500 if an unexpected server error occurs", async () => {
+      // Mock schema to throw a non-Zod error
+      jest.spyOn(notificationSchema.createNotificationInputSchema, "parse").mockImplementationOnce(() => {
+        throw new Error("Unexpected server error");
+      });
+
+      const newNotification = {
+        userId: randomUUID(),
+        message: "Test notification",
+      };
+
+      const response = await request(app)
+        .post("/api/notifications")
+        .send(newNotification);
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toHaveProperty("message");
+      expect(response.body.message).toBe("Internal server error");
+      expect(notifications).toHaveLength(0);
+    });
+  });
+});
